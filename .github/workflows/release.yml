@@ -1,0 +1,39 @@
+name: Spin Plugin Release Action
+on:
+  pull_request:
+    branches: [main]
+
+  push:
+    branches: [main]
+
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 19
+      
+      - name: npm install
+        run: npm install
+
+      - name: npm run build
+        run: npm run package
+        env:
+          NODE_OPTIONS: --openssl-legacy-provider
+
+      - name: upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: setup-spin
+          path: dist/plugin-release/index.js
+
+      - name: setup spin
+        uses: ./dist/plugin-release
+        with:
+          github_token: ${{ github.token }}
+
