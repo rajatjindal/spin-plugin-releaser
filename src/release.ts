@@ -81,6 +81,7 @@ async function run(): Promise<void> {
       }
     })
 
+    core.info(JSON.stringify(rr))
     const resp = await httpclient.post(
       RELEASE_BOT_WEBHOOK_URL,
       JSON.stringify(rr)
