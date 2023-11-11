@@ -7,6 +7,9 @@ import * as mustache from 'mustache'
 import * as tc from '@actions/tool-cache'
 import {Octokit} from '@octokit/rest'
 
+const RELEASE_BOT_WEBHOOK_URL =
+  'https://spin-plugin-release-bot-tjqim16y.fermyon.app'
+
 interface MustacheView {
   TagName: string
   addURLAndSha: () => (text: string, render: (text2: string) => string) => void
@@ -64,10 +67,10 @@ async function run(): Promise<void> {
     const manifest: Manifest = JSON.parse(output)
     const rr: ReleaseRequest = {
       tagName,
-      pluginName: manifest.name, //todo: get from manifest
+      pluginName: manifest.name,
       pluginRepo: github.context.repo.repo,
       pluginOwner: github.context.repo.owner,
-      pluginReleaseActor: github.context.action,
+      pluginReleaseActor: github.context.actor,
       processedTemplate: output
     }
 
@@ -78,10 +81,7 @@ async function run(): Promise<void> {
       }
     })
 
-    await httpclient.post(
-      'https://spin-plugin-release-bot-tjqim16y.fermyon.app',
-      JSON.stringify(rr)
-    )
+    await httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(rr))
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
