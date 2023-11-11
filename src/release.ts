@@ -81,7 +81,11 @@ async function run(): Promise<void> {
       }
     })
 
-    await httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(rr))
+    const resp = await httpclient.post(
+      RELEASE_BOT_WEBHOOK_URL,
+      JSON.stringify(rr)
+    )
+    core.info(JSON.stringify(resp))
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

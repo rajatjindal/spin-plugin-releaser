@@ -19272,7 +19272,8 @@ function run() {
                     Authorization: `Bearer token`
                 }
             });
-            yield httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(rr));
+            const resp = yield httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(rr));
+            core.info(JSON.stringify(resp));
         }
         catch (error) {
             if (error instanceof Error)
