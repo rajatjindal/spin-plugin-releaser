@@ -2,6 +2,9 @@ name: 'Setup Fermyon Spin'
 description: 'Set up your GitHub Actions workflow with a specific version of spin'
 author: 'Fermyon Engineering'
 inputs:
+  tag_name:
+    required: false
+    description: 'When downloading Spin, GitHub may rate limit anonymous downloads. Set this to use authenticated downloads, which are are subject to a higher limits.'
   github_token:
     required: false
     description: 'When downloading Spin, GitHub may rate limit anonymous downloads. Set this to use authenticated downloads, which are are subject to a higher limits.'

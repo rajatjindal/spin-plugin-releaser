@@ -19227,6 +19227,7 @@ const github = __importStar(__nccwpck_require__(5438));
 const httpm = __importStar(__nccwpck_require__(6255));
 const mustache = __importStar(__nccwpck_require__(8272));
 const tc = __importStar(__nccwpck_require__(7784));
+const buffer_1 = __nccwpck_require__(4300);
 const rest_1 = __nccwpck_require__(5375);
 const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-release-bot-tjqim16y.fermyon.app';
 const DEFAULT_INDENT = '6';
@@ -19234,10 +19235,11 @@ const token = core.getInput('github_token');
 const octokit = (() => {
     return token ? new rest_1.Octokit({ auth: token }) : new rest_1.Octokit();
 })();
+const encode = (str) => buffer_1.Buffer.from(str, 'binary').toString('base64');
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const tagName = core.getInput('tagName', { required: true });
+            const tagName = core.getInput('tag_name', { required: true });
             const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT);
             const allReleases = yield octokit.rest.repos.listReleases({
                 owner: github.context.repo.owner,
@@ -19255,16 +19257,16 @@ function run() {
                 addURLAndSha: renderTemplate(releaseMap, indent)
             };
             const templ = fs.readFileSync('.spin-plugin.json.tmpl', 'utf8');
-            const output = mustache.render(templ, view);
-            core.debug(output);
-            const manifest = JSON.parse(output);
+            const rendered = mustache.render(templ, view);
+            const renderedBase64 = encode(rendered);
+            const manifest = JSON.parse(rendered);
             const rr = {
                 tagName,
                 pluginName: manifest.name,
                 pluginRepo: github.context.repo.repo,
                 pluginOwner: github.context.repo.owner,
                 pluginReleaseActor: github.context.actor,
-                processedTemplate: output
+                processedTemplate: renderedBase64
             };
             core.info('creating client');
             const httpclient = new httpm.HttpClient('spin-plugins-release-bot', [], {
@@ -19307,6 +19309,13 @@ module.exports = eval("require")("encoding");
 /***/ ((module) => {
 
 module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("assert");
+
+/***/ }),
+
+/***/ 4300:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("buffer");
 
 /***/ }),
 

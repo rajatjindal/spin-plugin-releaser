@@ -5,6 +5,7 @@ import * as github from '@actions/github'
 import * as httpm from '@actions/http-client'
 import * as mustache from 'mustache'
 import * as tc from '@actions/tool-cache'
+import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
 
 const RELEASE_BOT_WEBHOOK_URL =
@@ -35,9 +36,12 @@ const octokit = (() => {
   return token ? new Octokit({auth: token}) : new Octokit()
 })()
 
+const encode = (str: string): string =>
+  Buffer.from(str, 'binary').toString('base64')
+
 async function run(): Promise<void> {
   try {
-    const tagName = core.getInput('tagName', {required: true})
+    const tagName = core.getInput('tag_name', {required: true})
     const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
     const allReleases = await octokit.rest.repos.listReleases({
       owner: github.context.repo.owner,
@@ -61,17 +65,17 @@ async function run(): Promise<void> {
     }
 
     const templ = fs.readFileSync('.spin-plugin.json.tmpl', 'utf8')
-    const output = mustache.render(templ, view)
-    core.debug(output)
+    const rendered = mustache.render(templ, view)
+    const renderedBase64 = encode(rendered)
 
-    const manifest: Manifest = JSON.parse(output)
+    const manifest: Manifest = JSON.parse(rendered)
     const rr: ReleaseRequest = {
       tagName,
       pluginName: manifest.name,
       pluginRepo: github.context.repo.repo,
       pluginOwner: github.context.repo.owner,
       pluginReleaseActor: github.context.actor,
-      processedTemplate: output
+      processedTemplate: renderedBase64
     }
 
     core.info('creating client')
