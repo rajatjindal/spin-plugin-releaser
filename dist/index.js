@@ -19245,6 +19245,7 @@ function run() {
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo
             });
+            core.info(JSON.stringify(allReleases));
             const release = allReleases.data.find(item => item.tag_name === tagName);
             if (!release) {
                 throw new Error(`no release found with tag ${tagName}`);
