@@ -48,6 +48,10 @@ async function run(): Promise<void> {
     })
 
     const release = allReleases.data.find(item => item.tag_name === tagName)
+    if (!release) {
+      throw new Error(`no release found with tag ${tagName}`)
+    }
+
     const releaseMap = new Map<string, string>()
     for (const asset of release?.assets || []) {
       const downloadPath = await tc.downloadTool(asset.browser_download_url)
@@ -68,7 +72,7 @@ async function run(): Promise<void> {
     const renderedBase64 = encode(rendered)
 
     const manifest: Manifest = JSON.parse(rendered)
-    const rr: ReleaseRequest = {
+    const releaseReq: ReleaseRequest = {
       tagName,
       pluginName: manifest.name,
       pluginRepo: github.context.repo.repo,
@@ -77,19 +81,28 @@ async function run(): Promise<void> {
       processedTemplate: renderedBase64
     }
 
-    core.info('creating client')
-    const httpclient = new httpm.HttpClient('spin-plugins-release-bot', [], {
-      headers: {
-        Authorization: `Bearer token`
-      }
-    })
+    const httpclient = new httpm.HttpClient('spin-plugins-release-bot')
 
-    core.info(JSON.stringify(rr, null, '\t'))
-    const resp = await httpclient.post(
-      RELEASE_BOT_WEBHOOK_URL,
-      JSON.stringify(rr)
-    )
-    core.info(JSON.stringify(resp))
+    core.debug(JSON.stringify(releaseReq, null, '\t'))
+
+    if (tagName === 'canary') {
+      core.info('uploading asset to canary release')
+      await octokit.rest.repos.uploadReleaseAsset({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        release_id: release.id,
+        name: `${manifest.name}.json`,
+        data: rendered
+      })
+
+      core.info(
+        `added ${manifest.name}.json file to release with tag ${tagName}`
+      )
+      return
+    }
+
+    core.info('making webhook request to create PR')
+    await httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(releaseReq))
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

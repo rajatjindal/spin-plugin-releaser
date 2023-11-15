@@ -19246,6 +19246,9 @@ function run() {
                 repo: github.context.repo.repo
             });
             const release = allReleases.data.find(item => item.tag_name === tagName);
+            if (!release) {
+                throw new Error(`no release found with tag ${tagName}`);
+            }
             const releaseMap = new Map();
             for (const asset of (release === null || release === void 0 ? void 0 : release.assets) || []) {
                 const downloadPath = yield tc.downloadTool(asset.browser_download_url);
@@ -19260,7 +19263,7 @@ function run() {
             const rendered = mustache.render(templ, view);
             const renderedBase64 = encode(rendered);
             const manifest = JSON.parse(rendered);
-            const rr = {
+            const releaseReq = {
                 tagName,
                 pluginName: manifest.name,
                 pluginRepo: github.context.repo.repo,
@@ -19268,15 +19271,22 @@ function run() {
                 pluginReleaseActor: github.context.actor,
                 processedTemplate: renderedBase64
             };
-            core.info('creating client');
-            const httpclient = new httpm.HttpClient('spin-plugins-release-bot', [], {
-                headers: {
-                    Authorization: `Bearer token`
-                }
-            });
-            core.info(JSON.stringify(rr, null, '\t'));
-            const resp = yield httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(rr));
-            core.info(JSON.stringify(resp));
+            const httpclient = new httpm.HttpClient('spin-plugins-release-bot');
+            core.debug(JSON.stringify(releaseReq, null, '\t'));
+            if (tagName === 'canary') {
+                core.info('uploading asset to canary release');
+                yield octokit.rest.repos.uploadReleaseAsset({
+                    owner: github.context.repo.owner,
+                    repo: github.context.repo.repo,
+                    release_id: release.id,
+                    name: `${manifest.name}.json`,
+                    data: rendered
+                });
+                core.info(`added ${manifest.name}.json file to release with tag ${tagName}`);
+                return;
+            }
+            core.info('making webhook request to create PR');
+            yield httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(releaseReq));
         }
         catch (error) {
             if (error instanceof Error)
