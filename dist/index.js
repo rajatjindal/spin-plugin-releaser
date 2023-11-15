@@ -19229,7 +19229,7 @@ const mustache = __importStar(__nccwpck_require__(8272));
 const tc = __importStar(__nccwpck_require__(7784));
 const buffer_1 = __nccwpck_require__(4300);
 const rest_1 = __nccwpck_require__(5375);
-const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-release-bot-tjqim16y.fermyon.app';
+const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app';
 const DEFAULT_INDENT = '6';
 const token = core.getInput('github_token');
 const octokit = (() => {

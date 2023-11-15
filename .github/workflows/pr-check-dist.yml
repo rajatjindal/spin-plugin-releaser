@@ -1,12 +1,10 @@
-name: Spin Plugin Release Action
+name: Ensure dist package is up to date
 on:
   pull_request:
     branches: [main]
 
   push:
     branches: [main]
-
-  workflow_dispatch: {}
 
 jobs:
   build:
@@ -26,14 +24,5 @@ jobs:
         env:
           NODE_OPTIONS: --openssl-legacy-provider
 
-      - name: upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: setup-spin
-          path: dist/plugin-release/index.js
-
-      - name: setup spin
-        uses: ./dist/plugin-release
-        with:
-          github_token: ${{ github.token }}
-
+      - name: ensure dist is up to date
+        run: git diff --exit-code

@@ -8,8 +8,7 @@ import * as tc from '@actions/tool-cache'
 import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
 
-const RELEASE_BOT_WEBHOOK_URL =
-  'https://spin-plugin-release-bot-tjqim16y.fermyon.app'
+const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
 
 interface MustacheView {
   TagName: string

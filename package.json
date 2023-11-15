@@ -1,5 +1,5 @@
 {
-  "name": "spin-plugin-release-bot",
+  "name": "spin-plugin-releaser",
   "version": "1.0.0",
   "type": "module",
   "description": "This provide action for releasing spin plugins automatically",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rajatjindal/spin-plugin-release-bot-action.git"
+    "url": "git+https://github.com/rajatjindal/spin-plugin-releaser.git"
   },
   "keywords": [
     "actions",

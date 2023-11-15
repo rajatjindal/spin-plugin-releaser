@@ -1,13 +1,13 @@
-name: 'Setup Fermyon Spin'
+name: 'Spin plugin releaser'
 description: 'Set up your GitHub Actions workflow with a specific version of spin'
 author: 'Fermyon Engineering'
 inputs:
   tag_name:
-    required: false
-    description: 'When downloading Spin, GitHub may rate limit anonymous downloads. Set this to use authenticated downloads, which are are subject to a higher limits.'
+    required: true
+    description: 'the release tag'
   github_token:
     required: false
-    description: 'When downloading Spin, GitHub may rate limit anonymous downloads. Set this to use authenticated downloads, which are are subject to a higher limits.'
+    description: 'github token used for downloading artifacts to render template'
 runs:
   using: 'node16'
   main: 'dist/index.js'
