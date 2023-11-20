@@ -19239,7 +19239,7 @@ const encode = (str) => buffer_1.Buffer.from(str, 'binary').toString('base64');
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const tagName = core.getInput('tag_name', { required: true });
+            const tagName = getReleaseTagName();
             const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT);
             const allReleases = yield octokit.rest.repos.listReleases({
                 owner: github.context.repo.owner,
@@ -19260,7 +19260,9 @@ function run() {
                 TagName: tagName,
                 addURLAndSha: renderTemplate(releaseMap, indent)
             };
-            const templ = fs.readFileSync('.spin-plugin.json.tmpl', 'utf8');
+            const templateFile = core.getInput('template_file', { trimWhitespace: true }) ||
+                '.spin-plugin.json.tmpl';
+            const templ = fs.readFileSync(templateFile, 'utf8');
             const rendered = mustache.render(templ, view);
             const renderedBase64 = encode(rendered);
             const manifest = JSON.parse(rendered);
@@ -19272,7 +19274,7 @@ function run() {
                 pluginReleaseActor: github.context.actor,
                 processedTemplate: renderedBase64
             };
-            const httpclient = new httpm.HttpClient('spin-plugins-release-bot');
+            const httpclient = new httpm.HttpClient('spin-plugins-releaser');
             core.debug(JSON.stringify(releaseReq, null, '\t'));
             if (tagName === 'canary') {
                 core.info('uploading asset to canary release');
@@ -19302,6 +19304,15 @@ function renderTemplate(inp, indent) {
             return `"url": "${url}",\n${' '.repeat(indent)}"sha256": "${inp.get(url)}"`;
         };
     };
+}
+function getReleaseTagName() {
+    if (github.context.ref.startsWith('refs/tags/v')) {
+        return github.context.ref.replace('refs/tags/v', '');
+    }
+    if (github.context.ref === 'refs/heads/main') {
+        return 'canary';
+    }
+    throw new Error(`invalid ref '${github.context.ref}' found`);
 }
 run();
 

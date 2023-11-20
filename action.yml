@@ -2,9 +2,9 @@ name: 'Spin plugin releaser'
 description: 'Set up your GitHub Actions workflow with a specific version of spin'
 author: 'Fermyon Engineering'
 inputs:
-  tag_name:
-    required: true
-    description: 'the release tag'
+  template_file:
+    required: false
+    description: 'the plugin template file'
   github_token:
     required: false
     description: 'github token used for downloading artifacts to render template'
