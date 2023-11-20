@@ -7,7 +7,6 @@ inputs:
     description: 'the plugin template file'
   upload_checksums:
     required: false
-    default: false
     description: 'if enabled, uploads a checksums-<tagname>.txt file to release'
   github_token:
     required: false

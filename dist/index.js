@@ -19284,6 +19284,9 @@ function run() {
                 const checksums = [];
                 for (const pair of releaseMap) {
                     const [key, value] = pair;
+                    if (!key.endsWith('.tar.gz')) {
+                        continue;
+                    }
                     checksums.push(`${value}  ${getFilename(key)}`);
                 }
                 yield octokit.rest.repos.uploadReleaseAsset({
@@ -19333,7 +19336,11 @@ function getReleaseTagName() {
     throw new Error(`invalid ref '${github.context.ref}' found`);
 }
 function getFilename(url) {
-    return url;
+    const name = url.split('/').pop();
+    if (name) {
+        return name;
+    }
+    throw new Error('failed to find filename from asset url');
 }
 run();
 

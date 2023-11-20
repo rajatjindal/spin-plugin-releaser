@@ -100,6 +100,10 @@ async function run(): Promise<void> {
       const checksums: string[] = []
       for (const pair of releaseMap) {
         const [key, value] = pair
+        if (!key.endsWith('.tar.gz')) {
+          continue
+        }
+
         checksums.push(`${value}  ${getFilename(key)}`)
       }
 
@@ -162,7 +166,12 @@ function getReleaseTagName(): string {
 }
 
 function getFilename(url: string): string {
-  return url
+  const name = url.split('/').pop()
+  if (name) {
+    return name
+  }
+
+  throw new Error('failed to find filename from asset url')
 }
 
 run()
