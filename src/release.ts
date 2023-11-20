@@ -90,6 +90,23 @@ async function run(): Promise<void> {
 
     core.debug(JSON.stringify(releaseReq, null, '\t'))
 
+    // create checksums-<tagname>.txt
+    if (core.getBooleanInput('upload_checksums', {trimWhitespace: true})) {
+      const checksums: string[] = []
+      for (const pair of releaseMap) {
+        const [key, value] = pair
+        checksums.push(`${value}  ${getFilename(key)}`)
+      }
+
+      await octokit.rest.repos.uploadReleaseAsset({
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        release_id: release.id,
+        name: `checksums-${tagName}.txt`,
+        data: checksums.join('\n')
+      })
+    }
+
     if (tagName === 'canary') {
       core.info('uploading asset to canary release')
       await octokit.rest.repos.uploadReleaseAsset({
@@ -137,6 +154,10 @@ function getReleaseTagName(): string {
   }
 
   throw new Error(`invalid ref '${github.context.ref}' found`)
+}
+
+function getFilename(url: string): string {
+  return url
 }
 
 run()
