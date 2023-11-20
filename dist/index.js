@@ -19277,7 +19277,10 @@ function run() {
             const httpclient = new httpm.HttpClient('spin-plugins-releaser');
             core.debug(JSON.stringify(releaseReq, null, '\t'));
             // create checksums-<tagname>.txt
-            if (core.getBooleanInput('upload_checksums', { trimWhitespace: true })) {
+            const uploadChecksums = core
+                .getInput('upload_checksums', { trimWhitespace: true })
+                .toLowerCase() === 'true' || false;
+            if (uploadChecksums) {
                 const checksums = [];
                 for (const pair of releaseMap) {
                     const [key, value] = pair;
