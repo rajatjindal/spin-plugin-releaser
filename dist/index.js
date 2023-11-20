@@ -19319,6 +19319,7 @@ function run() {
     });
 }
 function renderTemplate(inp, indent) {
+    core.info(`input map is ${inp}`);
     return function () {
         return function (text, render) {
             const url = render(text);

@@ -143,6 +143,7 @@ function renderTemplate(
   inp: Map<string, string>,
   indent: number
 ): () => (text: string, render: (arg: string) => string) => void {
+  core.info(`input map is ${inp}`)
   return function (): (text: string, render: (arg: string) => string) => void {
     return function (text: string, render: (arg: string) => string): string {
       const url = render(text)
