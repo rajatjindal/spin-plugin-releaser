@@ -14,15 +14,13 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: 19
+          node-version: 20
       
       - name: npm install
         run: npm install
 
       - name: npm run build
         run: npm run package
-        env:
-          NODE_OPTIONS: --openssl-legacy-provider
 
       - name: ensure dist is up to date
         run: git diff --exit-code
