@@ -8,6 +8,7 @@ import * as tc from '@actions/tool-cache'
 import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
 import toml from 'toml'
+
 const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
 
 interface MustacheView {
@@ -49,7 +50,6 @@ async function run(): Promise<void> {
       repo: github.context.repo.repo
     })
 
-    core.info(JSON.stringify(allReleases))
     const release = allReleases.data.find(item => item.tag_name === tagName)
     if (!release) {
       throw new Error(`no release found with tag ${tagName}`)
@@ -173,11 +173,10 @@ function getReleaseTagName(): string {
 function getVersion(tagName: string): string {
   if (tagName === 'canary') {
     const cargoToml = toml.parse(fs.readFileSync('Cargo.toml', 'utf-8'))
-    core.info(`${cargoToml.package.version}post.${getEpochTime()}`)
     return `${cargoToml.package.version}post.${getEpochTime()}`
   }
 
-  return tagName
+  return tagName.replace(/^v/, '')
 }
 
 function getEpochTime(): number {

@@ -23414,7 +23414,6 @@ function run() {
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo
             });
-            core.info(JSON.stringify(allReleases));
             const release = allReleases.data.find(item => item.tag_name === tagName);
             if (!release) {
                 throw new Error(`no release found with tag ${tagName}`);
@@ -23510,10 +23509,9 @@ function getReleaseTagName() {
 function getVersion(tagName) {
     if (tagName === 'canary') {
         const cargoToml = toml_1.default.parse(fs.readFileSync('Cargo.toml', 'utf-8'));
-        core.info(`${cargoToml.package.version}post.${getEpochTime()}`);
         return `${cargoToml.package.version}post.${getEpochTime()}`;
     }
-    return tagName;
+    return tagName.replace(/^v/, '');
 }
 function getEpochTime() {
     return Math.floor(new Date().getTime() / 1000);
