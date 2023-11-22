@@ -1,6 +1,7 @@
 {
   "name": "spin-plugin-releaser",
   "version": "1.0.0",
+  "type": "module",
   "description": "This provide action for releasing spin plugins automatically",
   "scripts": {
     "build": "tsc",
