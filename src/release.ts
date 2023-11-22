@@ -7,11 +7,12 @@ import * as mustache from 'mustache'
 import * as tc from '@actions/tool-cache'
 import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
-
+import toml from 'toml'
 const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
 
 interface MustacheView {
   TagName: string
+  Version: string
   addURLAndSha: () => (text: string, render: (text2: string) => string) => void
 }
 
@@ -41,6 +42,7 @@ const encode = (str: string): string =>
 async function run(): Promise<void> {
   try {
     const tagName = getReleaseTagName()
+    const version = getVersion(tagName)
     const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
     const allReleases = await octokit.rest.repos.listReleases({
       owner: github.context.repo.owner,
@@ -65,6 +67,7 @@ async function run(): Promise<void> {
 
     const view: MustacheView = {
       TagName: tagName,
+      Version: version,
       addURLAndSha: renderTemplate(releaseMap, indent)
     }
 
@@ -140,16 +143,17 @@ async function run(): Promise<void> {
 }
 
 function renderTemplate(
-  inp: Map<string, string>,
+  sha256sumMap: Map<string, string>,
   indent: number
 ): () => (text: string, render: (arg: string) => string) => void {
-  core.info(`input map is ${inp}`)
   return function (): (text: string, render: (arg: string) => string) => void {
     return function (text: string, render: (arg: string) => string): string {
       const url = render(text)
-      return `"url": "${url}",\n${' '.repeat(indent)}"sha256": "${inp.get(
-        url
-      )}"`
+      return (
+        `"url": "${url}",` +
+        '\n' +
+        `${' '.repeat(indent)}"sha256": "${sha256sumMap.get(url)}"`
+      )
     }
   }
 }
@@ -164,6 +168,20 @@ function getReleaseTagName(): string {
   }
 
   throw new Error(`invalid ref '${github.context.ref}' found`)
+}
+
+function getVersion(tagName: string): string {
+  if (tagName === 'canary') {
+    const cargoToml = toml.parse(fs.readFileSync('Cargo.toml', 'utf-8'))
+    core.info(`${cargoToml.package.version}post.${getEpochTime()}`)
+    return `${cargoToml.package.version}post.${getEpochTime()}`
+  }
+
+  return tagName
+}
+
+function getEpochTime(): number {
+  return Math.floor(new Date().getTime() / 1000)
 }
 
 function getFilename(url: string): string {
