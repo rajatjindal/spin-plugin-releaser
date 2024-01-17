@@ -23322,7 +23322,7 @@ function run() {
             }
             const releaseMap = new Map();
             for (const asset of (release === null || release === void 0 ? void 0 : release.assets) || []) {
-                const downloadPath = yield tc.downloadTool(asset.browser_download_url);
+                const downloadPath = yield tc.downloadTool(asset.browser_download_url, undefined, token);
                 const buffer = fs.readFileSync(downloadPath);
                 releaseMap.set(asset.browser_download_url, crypto.createHash('sha256').update(buffer).digest('hex'));
             }
