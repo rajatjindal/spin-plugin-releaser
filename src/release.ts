@@ -50,6 +50,10 @@ async function run(): Promise<void> {
       repo: github.context.repo.repo
     })
 
+    //sometimes github assets are not available right away
+    //TODO: retry instead of sleep
+    await addDelay(10 * 1000)
+
     const release = allReleases.data.find(item => item.tag_name === tagName)
     if (!release) {
       throw new Error(`no release found with tag ${tagName}`)
@@ -199,6 +203,10 @@ function getFilename(url: string): string {
   }
 
   throw new Error('failed to find filename from asset url')
+}
+
+async function addDelay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 run()

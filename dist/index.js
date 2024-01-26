@@ -23316,6 +23316,9 @@ function run() {
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo
             });
+            //sometimes github assets are not available right away
+            //TODO: retry instead of sleep
+            yield addDelay(10 * 1000);
             const release = allReleases.data.find(item => item.tag_name === tagName);
             if (!release) {
                 throw new Error(`no release found with tag ${tagName}`);
@@ -23428,6 +23431,11 @@ function getFilename(url) {
         return name;
     }
     throw new Error('failed to find filename from asset url');
+}
+function addDelay(ms) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    });
 }
 run();
 
