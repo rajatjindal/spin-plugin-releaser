@@ -65,7 +65,7 @@ async function run(): Promise<void> {
       const downloadPath = await tc.downloadTool(
         asset.browser_download_url,
         undefined,
-        token
+        token ? `Bearer ${token}` : undefined
       )
       const buffer = fs.readFileSync(downloadPath)
       releaseMap.set(
