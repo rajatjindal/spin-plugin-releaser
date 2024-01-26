@@ -63,9 +63,12 @@ async function run(): Promise<void> {
     for (const asset of release?.assets || []) {
       core.info(`calculating sha of ${asset.browser_download_url}`)
       const downloadPath = await tc.downloadTool(
-        asset.browser_download_url,
+        asset.url,
         undefined,
-        token ? `Bearer ${token}` : undefined
+        token ? `token ${token}` : undefined,
+        {
+          accept: 'application/octet-stream'
+        }
       )
       const buffer = fs.readFileSync(downloadPath)
       releaseMap.set(
