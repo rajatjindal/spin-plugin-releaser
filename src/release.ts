@@ -57,6 +57,7 @@ async function run(): Promise<void> {
 
     const releaseMap = new Map<string, string>()
     for (const asset of release?.assets || []) {
+      core.info(`calculating sha of ${asset.browser_download_url}`)
       const downloadPath = await tc.downloadTool(
         asset.browser_download_url,
         undefined,
