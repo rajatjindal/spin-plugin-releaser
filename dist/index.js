@@ -23410,8 +23410,11 @@ function getReleaseTagName() {
 }
 function getVersion(tagName) {
     if (tagName === 'canary') {
-        const cargoToml = toml_1.default.parse(fs.readFileSync('Cargo.toml', 'utf-8'));
-        return `${cargoToml.package.version}post.${getEpochTime()}`;
+        if (fs.existsSync('Cargo.toml')) {
+            const cargoToml = toml_1.default.parse(fs.readFileSync('Cargo.toml', 'utf-8'));
+            return `${cargoToml.package.version}post.${getEpochTime()}`;
+        }
+        return `canary.${getEpochTime()}`;
     }
     return tagName.replace(/^v/, '');
 }

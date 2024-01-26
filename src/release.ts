@@ -176,8 +176,12 @@ function getReleaseTagName(): string {
 
 function getVersion(tagName: string): string {
   if (tagName === 'canary') {
-    const cargoToml = toml.parse(fs.readFileSync('Cargo.toml', 'utf-8'))
-    return `${cargoToml.package.version}post.${getEpochTime()}`
+    if (fs.existsSync('Cargo.toml')) {
+      const cargoToml = toml.parse(fs.readFileSync('Cargo.toml', 'utf-8'))
+      return `${cargoToml.package.version}post.${getEpochTime()}`
+    }
+
+    return `canary.${getEpochTime()}`
   }
 
   return tagName.replace(/^v/, '')
