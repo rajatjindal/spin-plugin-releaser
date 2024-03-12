@@ -12,5 +12,5 @@ inputs:
     required: false
     description: 'github token used for downloading artifacts to render template'
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
