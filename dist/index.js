@@ -23319,9 +23319,9 @@ function run() {
             //sometimes github assets are not available right away
             //TODO: retry instead of sleep
             yield addDelay(10 * 1000);
-            const release = allReleases.data.find(item => item.tag_name === tagName);
+            const release = allReleases.data.find(item => item.tag_name === tagName || item.tag_name === `v${tagName}`);
             if (!release) {
-                throw new Error(`no release found with tag ${tagName}`);
+                throw new Error(`no release found with tag ${tagName} or v${tagName}`);
             }
             const releaseMap = new Map();
             for (const asset of (release === null || release === void 0 ? void 0 : release.assets) || []) {
@@ -23383,7 +23383,7 @@ function run() {
                     name: `${manifest.name}.json`,
                     data: rendered
                 });
-                core.info(`added ${manifest.name}.json file to release with tag ${tagName}`);
+                core.info(`added ${manifest.name}.json file to release ${tagName}`);
                 return;
             }
             core.info('making webhook request to create PR');

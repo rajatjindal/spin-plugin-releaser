@@ -54,9 +54,11 @@ async function run(): Promise<void> {
     //TODO: retry instead of sleep
     await addDelay(10 * 1000)
 
-    const release = allReleases.data.find(item => item.tag_name === tagName)
+    const release = allReleases.data.find(
+      item => item.tag_name === tagName || item.tag_name === `v${tagName}`
+    )
     if (!release) {
-      throw new Error(`no release found with tag ${tagName}`)
+      throw new Error(`no release found with tag ${tagName} or v${tagName}`)
     }
 
     const releaseMap = new Map<string, string>()
@@ -141,9 +143,7 @@ async function run(): Promise<void> {
         data: rendered
       })
 
-      core.info(
-        `added ${manifest.name}.json file to release with tag ${tagName}`
-      )
+      core.info(`added ${manifest.name}.json file to release ${tagName}`)
       return
     }
 
