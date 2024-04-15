@@ -23309,8 +23309,8 @@ const encode = (str) => buffer_1.Buffer.from(str, 'binary').toString('base64');
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const tagName = getReleaseTagName();
-            const version = getVersion(tagName);
+            const tempTagName = getReleaseTagName();
+            const version = getVersion(tempTagName);
             const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT);
             const allReleases = yield octokit.rest.repos.listReleases({
                 owner: github.context.repo.owner,
@@ -23319,10 +23319,12 @@ function run() {
             //sometimes github assets are not available right away
             //TODO: retry instead of sleep
             yield addDelay(10 * 1000);
-            const release = allReleases.data.find(item => item.tag_name === tagName || item.tag_name === `v${tagName}`);
+            const release = allReleases.data.find(item => item.tag_name === tempTagName || item.tag_name === `v${tempTagName}`);
             if (!release) {
-                throw new Error(`no release found with tag ${tagName} or v${tagName}`);
+                throw new Error(`no release found with tag ${tempTagName} or v${tempTagName}`);
             }
+            // use the tag from the release
+            const tagName = release.tag_name;
             const releaseMap = new Map();
             for (const asset of (release === null || release === void 0 ? void 0 : release.assets) || []) {
                 core.info(`calculating sha of ${asset.browser_download_url}`);
@@ -23386,8 +23388,9 @@ function run() {
                 core.info(`added ${manifest.name}.json file to release ${tagName}`);
                 return;
             }
-            core.info('making webhook request to create PR');
-            yield httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(releaseReq));
+            const rawBody = JSON.stringify(releaseReq);
+            core.info(`making webhook request to create PR ${rawBody}`);
+            yield httpclient.post(RELEASE_BOT_WEBHOOK_URL, rawBody);
         }
         catch (error) {
             if (error instanceof Error)

@@ -42,8 +42,8 @@ const encode = (str: string): string =>
 
 async function run(): Promise<void> {
   try {
-    const tagName = getReleaseTagName()
-    const version = getVersion(tagName)
+    const tempTagName = getReleaseTagName()
+    const version = getVersion(tempTagName)
     const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
     const allReleases = await octokit.rest.repos.listReleases({
       owner: github.context.repo.owner,
@@ -55,11 +55,17 @@ async function run(): Promise<void> {
     await addDelay(10 * 1000)
 
     const release = allReleases.data.find(
-      item => item.tag_name === tagName || item.tag_name === `v${tagName}`
+      item =>
+        item.tag_name === tempTagName || item.tag_name === `v${tempTagName}`
     )
     if (!release) {
-      throw new Error(`no release found with tag ${tagName} or v${tagName}`)
+      throw new Error(
+        `no release found with tag ${tempTagName} or v${tempTagName}`
+      )
     }
+
+    // use the tag from the release
+    const tagName = release.tag_name
 
     const releaseMap = new Map<string, string>()
     for (const asset of release?.assets || []) {
@@ -147,8 +153,9 @@ async function run(): Promise<void> {
       return
     }
 
-    core.info('making webhook request to create PR')
-    await httpclient.post(RELEASE_BOT_WEBHOOK_URL, JSON.stringify(releaseReq))
+    const rawBody = JSON.stringify(releaseReq)
+    core.info(`making webhook request to create PR ${rawBody}`)
+    await httpclient.post(RELEASE_BOT_WEBHOOK_URL, rawBody)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
