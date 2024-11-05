@@ -23299,7 +23299,10 @@ const tc = __importStar(__nccwpck_require__(7784));
 const buffer_1 = __nccwpck_require__(4300);
 const rest_1 = __nccwpck_require__(5375);
 const toml_1 = __importDefault(__nccwpck_require__(4920));
-const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app';
+// until https://github.com/fermyon/spin/issues/2905 can be fixed/deployed
+// on Fermyon cloud, use the deployment on my personal k8s cluster.
+// const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
+const RELEASE_BOT_WEBHOOK_URL = 'https://spinpluginreleasebot.rajatjindal.com';
 const DEFAULT_INDENT = '6';
 const token = core.getInput('github_token');
 const octokit = (() => {
@@ -23376,16 +23379,16 @@ function run() {
                     data: checksums.join('\n')
                 });
             }
+            core.info('uploading plugin json file as an asset to release');
+            yield octokit.rest.repos.uploadReleaseAsset({
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+                release_id: release.id,
+                name: `${manifest.name}.json`,
+                data: rendered
+            });
+            core.info(`added ${manifest.name}.json file to release ${tagName}`);
             if (tagName === 'canary') {
-                core.info('uploading asset to canary release');
-                yield octokit.rest.repos.uploadReleaseAsset({
-                    owner: github.context.repo.owner,
-                    repo: github.context.repo.repo,
-                    release_id: release.id,
-                    name: `${manifest.name}.json`,
-                    data: rendered
-                });
-                core.info(`added ${manifest.name}.json file to release ${tagName}`);
                 return;
             }
             const rawBody = JSON.stringify(releaseReq);
