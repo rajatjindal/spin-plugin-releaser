@@ -139,17 +139,17 @@ async function run(): Promise<void> {
       })
     }
 
-    if (tagName === 'canary') {
-      core.info('uploading asset to canary release')
-      await octokit.rest.repos.uploadReleaseAsset({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
-        release_id: release.id,
-        name: `${manifest.name}.json`,
-        data: rendered
-      })
+    core.info('uploading plugin json file as an asset to release')
+    await octokit.rest.repos.uploadReleaseAsset({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      release_id: release.id,
+      name: `${manifest.name}.json`,
+      data: rendered
+    })
 
-      core.info(`added ${manifest.name}.json file to release ${tagName}`)
+    core.info(`added ${manifest.name}.json file to release ${tagName}`)
+    if (tagName === 'canary') {
       return
     }
 
