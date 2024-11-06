@@ -9,7 +9,10 @@ import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
 import toml from 'toml'
 
-const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
+// until https://github.com/fermyon/spin/issues/2905 can be fixed/deployed
+// on Fermyon cloud, use the deployment on my personal k8s cluster.
+// const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
+const RELEASE_BOT_WEBHOOK_URL = 'https://spinpluginreleasebot.rajatjindal.com'
 
 interface MustacheView {
   TagName: string
@@ -139,17 +142,17 @@ async function run(): Promise<void> {
       })
     }
 
-    if (tagName === 'canary') {
-      core.info('uploading asset to canary release')
-      await octokit.rest.repos.uploadReleaseAsset({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
-        release_id: release.id,
-        name: `${manifest.name}.json`,
-        data: rendered
-      })
+    core.info('uploading plugin json file as an asset to release')
+    await octokit.rest.repos.uploadReleaseAsset({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      release_id: release.id,
+      name: `${manifest.name}.json`,
+      data: rendered
+    })
 
-      core.info(`added ${manifest.name}.json file to release ${tagName}`)
+    core.info(`added ${manifest.name}.json file to release ${tagName}`)
+    if (tagName === 'canary') {
       return
     }
 
