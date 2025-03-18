@@ -23315,13 +23315,15 @@ function run() {
             const tempTagName = getReleaseTagName();
             const version = getVersion(tempTagName);
             const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT);
+            const release_webhook_url = core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL;
+            //sometimes github assets are not available right away
+            //TODO: retry instead of sleep
+            yield addDelay(10 * 1000);
+            //TODO(rajatjindal): support navigation
             const allReleases = yield octokit.rest.repos.listReleases({
                 owner: github.context.repo.owner,
                 repo: github.context.repo.repo
             });
-            //sometimes github assets are not available right away
-            //TODO: retry instead of sleep
-            yield addDelay(10 * 1000);
             const release = allReleases.data.find(item => item.tag_name === tempTagName || item.tag_name === `v${tempTagName}`);
             if (!release) {
                 throw new Error(`no release found with tag ${tempTagName} or v${tempTagName}`);
