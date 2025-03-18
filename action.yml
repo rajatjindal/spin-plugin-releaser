@@ -11,6 +11,9 @@ inputs:
   github_token:
     required: false
     description: 'github token used for downloading artifacts to render template'
+  release_webhook_url:
+    required: false
+    description: 'The release webhook url to use instead of using the default'
 runs:
   using: 'node20'
   main: 'dist/index.js'

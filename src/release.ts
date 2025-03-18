@@ -48,14 +48,17 @@ async function run(): Promise<void> {
     const tempTagName = getReleaseTagName()
     const version = getVersion(tempTagName)
     const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
-    const allReleases = await octokit.rest.repos.listReleases({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo
-    })
+    const release_webhook_url = core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL
 
     //sometimes github assets are not available right away
     //TODO: retry instead of sleep
     await addDelay(10 * 1000)
+
+    //TODO(rajatjindal): support navigation
+    const allReleases = await octokit.rest.repos.listReleases({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo
+    })
 
     const release = allReleases.data.find(
       item =>
