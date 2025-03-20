@@ -23395,7 +23395,7 @@ function run() {
             }
             const rawBody = JSON.stringify(releaseReq);
             core.info(`making webhook request to create PR ${rawBody}`);
-            yield httpclient.post(RELEASE_BOT_WEBHOOK_URL, rawBody);
+            yield httpclient.post(release_webhook_url, rawBody);
         }
         catch (error) {
             if (error instanceof Error)
