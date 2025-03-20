@@ -48,7 +48,8 @@ async function run(): Promise<void> {
     const tempTagName = getReleaseTagName()
     const version = getVersion(tempTagName)
     const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
-    const release_webhook_url = core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL
+    const release_webhook_url =
+      core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL
 
     //sometimes github assets are not available right away
     //TODO: retry instead of sleep
@@ -161,7 +162,7 @@ async function run(): Promise<void> {
 
     const rawBody = JSON.stringify(releaseReq)
     core.info(`making webhook request to create PR ${rawBody}`)
-    await httpclient.post(RELEASE_BOT_WEBHOOK_URL, rawBody)
+    await httpclient.post(release_webhook_url, rawBody)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
