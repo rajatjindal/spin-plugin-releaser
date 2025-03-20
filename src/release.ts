@@ -9,10 +9,7 @@ import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
 import toml from 'toml'
 
-// until https://github.com/fermyon/spin/issues/2905 can be fixed/deployed
-// on Fermyon cloud, use the deployment on my personal k8s cluster.
-// const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
-const RELEASE_BOT_WEBHOOK_URL = 'https://spinpluginreleasebot.rajatjindal.com'
+const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
 
 interface MustacheView {
   TagName: string
