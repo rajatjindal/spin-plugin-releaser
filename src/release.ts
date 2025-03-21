@@ -44,9 +44,9 @@ async function run(): Promise<void> {
   try {
     const tempTagName = getReleaseTagName()
     const version = getVersion(tempTagName)
-    const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
+    const indent = parseInt(core.getInput('indent') ?? DEFAULT_INDENT)
     const release_webhook_url =
-      core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL
+      core.getInput('release_webhook_url') ?? RELEASE_BOT_WEBHOOK_URL
 
     //sometimes github assets are not available right away
     //TODO: retry instead of sleep
@@ -70,8 +70,7 @@ async function run(): Promise<void> {
 
     // use the tag from the release
     const tagName = release.tag_name
-
-    const releaseMap = new Map<string, string>()
+    const releaseMap: Record<string, string> = {}
     for (const asset of release?.assets || []) {
       core.info(`calculating sha of ${asset.browser_download_url}`)
       const downloadPath = await tc.downloadTool(
@@ -82,12 +81,15 @@ async function run(): Promise<void> {
           accept: 'application/octet-stream'
         }
       )
+
       const buffer = fs.readFileSync(downloadPath)
-      releaseMap.set(
-        asset.browser_download_url,
-        crypto.createHash('sha256').update(buffer).digest('hex')
-      )
+      releaseMap[asset.browser_download_url.toLowerCase()] = crypto
+        .createHash('sha256')
+        .update(buffer)
+        .digest('hex')
     }
+
+    core.info(`release map is ${JSON.stringify(releaseMap)}`)
 
     const view: MustacheView = {
       TagName: tagName,
@@ -115,7 +117,7 @@ async function run(): Promise<void> {
 
     const httpclient = new httpm.HttpClient('spin-plugins-releaser')
 
-    core.debug(JSON.stringify(releaseReq, null, '\t'))
+    core.info(JSON.stringify(releaseReq, null, '\t'))
 
     // create checksums-<tagname>.txt
     const uploadChecksums =
@@ -125,8 +127,7 @@ async function run(): Promise<void> {
 
     if (uploadChecksums) {
       const checksums: string[] = []
-      for (const pair of releaseMap) {
-        const [key, value] = pair
+      for (const [key, value] of Object.entries(releaseMap)) {
         if (!key.endsWith('.tar.gz')) {
           continue
         }
@@ -134,6 +135,7 @@ async function run(): Promise<void> {
         checksums.push(`${value}  ${getFilename(key)}`)
       }
 
+      core.info(`checksums file is ${checksums}`)
       await octokit.rest.repos.uploadReleaseAsset({
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
@@ -166,7 +168,7 @@ async function run(): Promise<void> {
 }
 
 function renderTemplate(
-  sha256sumMap: Map<string, string>,
+  sha256sumMap: Record<string, string>,
   indent: number
 ): () => (text: string, render: (arg: string) => string) => void {
   return function (): (text: string, render: (arg: string) => string) => void {
@@ -175,7 +177,7 @@ function renderTemplate(
       return (
         `"url": "${url}",` +
         '\n' +
-        `${' '.repeat(indent)}"sha256": "${sha256sumMap.get(url)}"`
+        `${' '.repeat(indent)}"sha256": "${sha256sumMap[url.toLowerCase()]}"`
       )
     }
   }

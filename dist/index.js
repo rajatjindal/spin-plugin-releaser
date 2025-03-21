@@ -23307,12 +23307,13 @@ const octokit = (() => {
 })();
 const encode = (str) => buffer_1.Buffer.from(str, 'binary').toString('base64');
 function run() {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tempTagName = getReleaseTagName();
             const version = getVersion(tempTagName);
-            const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT);
-            const release_webhook_url = core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL;
+            const indent = parseInt((_a = core.getInput('indent')) !== null && _a !== void 0 ? _a : DEFAULT_INDENT);
+            const release_webhook_url = (_b = core.getInput('release_webhook_url')) !== null && _b !== void 0 ? _b : RELEASE_BOT_WEBHOOK_URL;
             //sometimes github assets are not available right away
             //TODO: retry instead of sleep
             yield addDelay(10 * 1000);
@@ -23327,15 +23328,19 @@ function run() {
             }
             // use the tag from the release
             const tagName = release.tag_name;
-            const releaseMap = new Map();
+            const releaseMap = {};
             for (const asset of (release === null || release === void 0 ? void 0 : release.assets) || []) {
                 core.info(`calculating sha of ${asset.browser_download_url}`);
                 const downloadPath = yield tc.downloadTool(asset.url, undefined, token ? `token ${token}` : undefined, {
                     accept: 'application/octet-stream'
                 });
                 const buffer = fs.readFileSync(downloadPath);
-                releaseMap.set(asset.browser_download_url, crypto.createHash('sha256').update(buffer).digest('hex'));
+                releaseMap[asset.browser_download_url.toLowerCase()] = crypto
+                    .createHash('sha256')
+                    .update(buffer)
+                    .digest('hex');
             }
+            core.info(`release map is ${JSON.stringify(releaseMap)}`);
             const view = {
                 TagName: tagName,
                 Version: version,
@@ -23356,20 +23361,20 @@ function run() {
                 processedTemplate: renderedBase64
             };
             const httpclient = new httpm.HttpClient('spin-plugins-releaser');
-            core.debug(JSON.stringify(releaseReq, null, '\t'));
+            core.info(JSON.stringify(releaseReq, null, '\t'));
             // create checksums-<tagname>.txt
             const uploadChecksums = core
                 .getInput('upload_checksums', { trimWhitespace: true })
                 .toLowerCase() === 'true' || false;
             if (uploadChecksums) {
                 const checksums = [];
-                for (const pair of releaseMap) {
-                    const [key, value] = pair;
+                for (const [key, value] of Object.entries(releaseMap)) {
                     if (!key.endsWith('.tar.gz')) {
                         continue;
                     }
                     checksums.push(`${value}  ${getFilename(key)}`);
                 }
+                core.info(`checksums file is ${checksums}`);
                 yield octokit.rest.repos.uploadReleaseAsset({
                     owner: github.context.repo.owner,
                     repo: github.context.repo.repo,
@@ -23406,7 +23411,7 @@ function renderTemplate(sha256sumMap, indent) {
             const url = render(text);
             return (`"url": "${url}",` +
                 '\n' +
-                `${' '.repeat(indent)}"sha256": "${sha256sumMap.get(url)}"`);
+                `${' '.repeat(indent)}"sha256": "${sha256sumMap[url.toLowerCase()]}"`);
         };
     };
 }
