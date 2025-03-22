@@ -44,9 +44,11 @@ async function run(): Promise<void> {
   try {
     const tempTagName = getReleaseTagName()
     const version = getVersion(tempTagName)
-    const indent = parseInt(core.getInput('indent') ?? DEFAULT_INDENT)
+    const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
     const release_webhook_url =
-      core.getInput('release_webhook_url') ?? RELEASE_BOT_WEBHOOK_URL
+      core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL
+
+    core.info(`webhook url is ${release_webhook_url}`)
 
     //sometimes github assets are not available right away
     //TODO: retry instead of sleep
