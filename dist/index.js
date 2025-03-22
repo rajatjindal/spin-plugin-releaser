@@ -23307,13 +23307,13 @@ const octokit = (() => {
 })();
 const encode = (str) => buffer_1.Buffer.from(str, 'binary').toString('base64');
 function run() {
-    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const tempTagName = getReleaseTagName();
             const version = getVersion(tempTagName);
-            const indent = parseInt((_a = core.getInput('indent')) !== null && _a !== void 0 ? _a : DEFAULT_INDENT);
-            const release_webhook_url = (_b = core.getInput('release_webhook_url')) !== null && _b !== void 0 ? _b : RELEASE_BOT_WEBHOOK_URL;
+            const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT);
+            const release_webhook_url = core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL;
+            core.info(`webhook url is ${release_webhook_url}`);
             //sometimes github assets are not available right away
             //TODO: retry instead of sleep
             yield addDelay(10 * 1000);
