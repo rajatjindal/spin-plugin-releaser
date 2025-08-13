@@ -12,9 +12,9 @@ import semver from 'semver'
 
 const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
 
-interface MustacheView {
-  TagName: string
-  Version: string
+export interface MustacheView {
+  TagName: () => string
+  Version: () => string
   addURLAndSha: () => (text: string, render: (text2: string) => string) => void
 }
 
@@ -92,8 +92,8 @@ export async function run(): Promise<void> {
     core.info(`release map is ${JSON.stringify(releaseMap)}`)
 
     const view: MustacheView = {
-      TagName: tagName,
-      Version: version,
+      TagName: () => tagName,
+      Version: () => version,
       addURLAndSha: renderTemplate(releaseMap, indent)
     }
 
@@ -102,7 +102,9 @@ export async function run(): Promise<void> {
       '.spin-plugin.json.tmpl'
 
     const templ = fs.readFileSync(templateFile, 'utf8')
-    const rendered = mustache.render(templ, view)
+    const rendered = mustache.render(templ, view, undefined, {
+      escape: safeEscape
+    })
     const renderedBase64 = encode(rendered)
 
     const manifest: Manifest = JSON.parse(rendered)
@@ -167,7 +169,7 @@ export async function run(): Promise<void> {
   }
 }
 
-function renderTemplate(
+export function renderTemplate(
   sha256sumMap: Record<string, string>,
   indent: number
 ): () => (text: string, render: (arg: string) => string) => void {
@@ -238,3 +240,13 @@ function extractSemver(input: string): string | null {
   const version = semver.coerce(input)
   return version ? version.version : null
 }
+
+// mustache escape function rewrites plugin/v0.0.4 as plugin&#x2F;v0.0.4
+// The following functions tells mustache to leave `/` alone.
+const safeEscape = (text: string) =>
+  String(text)
+    .replace(/&/g, '&amp;') // must come first
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')

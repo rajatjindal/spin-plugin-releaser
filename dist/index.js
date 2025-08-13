@@ -43210,7 +43210,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getVersion = exports.getReleaseTagName = exports.run = void 0;
+exports.getVersion = exports.getReleaseTagName = exports.renderTemplate = exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const crypto = __importStar(__nccwpck_require__(6113));
 const fs = __importStar(__nccwpck_require__(5630));
@@ -43265,14 +43265,16 @@ function run() {
             }
             core.info(`release map is ${JSON.stringify(releaseMap)}`);
             const view = {
-                TagName: tagName,
-                Version: version,
+                TagName: () => tagName,
+                Version: () => version,
                 addURLAndSha: renderTemplate(releaseMap, indent)
             };
             const templateFile = core.getInput('template_file', { trimWhitespace: true }) ||
                 '.spin-plugin.json.tmpl';
             const templ = fs.readFileSync(templateFile, 'utf8');
-            const rendered = mustache.render(templ, view);
+            const rendered = mustache.render(templ, view, undefined, {
+                escape: safeEscape
+            });
             const renderedBase64 = encode(rendered);
             const manifest = JSON.parse(rendered);
             const releaseReq = {
@@ -43339,6 +43341,7 @@ function renderTemplate(sha256sumMap, indent) {
         };
     };
 }
+exports.renderTemplate = renderTemplate;
 // getReleaseTagName returns the tagName from the github ref
 function getReleaseTagName(input) {
     if (input.startsWith('refs/tags/')) {
@@ -43387,6 +43390,14 @@ function extractSemver(input) {
     const version = semver_1.default.coerce(input);
     return version ? version.version : null;
 }
+// mustache escape function rewrites plugin/v0.0.4 as plugin&#x2F;v0.0.4
+// The following functions tells mustache to leave `/` alone.
+const safeEscape = (text) => String(text)
+    .replace(/&/g, '&amp;') // must come first
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 
 /***/ }),
