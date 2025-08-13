@@ -163,7 +163,7 @@ export async function run(): Promise<void> {
 
     const rawBody = JSON.stringify(releaseReq)
     core.info(`making webhook request to create PR ${rawBody}`)
-    await httpclient.post(release_webhook_url, rawBody)
+    await httpclient.post(release_webhook_url, rawBody, {connection: 'close'})
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
