@@ -8,6 +8,7 @@ import * as tc from '@actions/tool-cache'
 import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
 import toml from 'toml'
+import semver from 'semver'
 
 const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
 
@@ -42,8 +43,8 @@ const encode = (str: string): string =>
 
 async function run(): Promise<void> {
   try {
-    const tempTagName = getReleaseTagName()
-    const version = getVersion(tempTagName)
+    const releaseTagName = getReleaseTagName(github.context.ref)
+    const version = getVersion(releaseTagName)
     const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
     const release_webhook_url =
       core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL
@@ -61,13 +62,10 @@ async function run(): Promise<void> {
     })
 
     const release = allReleases.data.find(
-      item =>
-        item.tag_name === tempTagName || item.tag_name === `v${tempTagName}`
+      item => item.tag_name === releaseTagName
     )
     if (!release) {
-      throw new Error(
-        `no release found with tag ${tempTagName} or v${tempTagName}`
-      )
+      throw new Error(`no release found with tag ${releaseTagName}`)
     }
 
     // use the tag from the release
@@ -185,19 +183,23 @@ function renderTemplate(
   }
 }
 
-function getReleaseTagName(): string {
-  if (github.context.ref.startsWith('refs/tags/v')) {
-    return github.context.ref.replace('refs/tags/v', '')
+// getReleaseTagName returns the tagName from the github ref
+export function getReleaseTagName(input: string): string {
+  if (input.startsWith('refs/tags/')) {
+    return input.replace('refs/tags/', '')
   }
 
-  if (github.context.ref === 'refs/heads/main') {
+  if (input === 'refs/heads/main') {
     return 'canary'
   }
 
-  throw new Error(`invalid ref '${github.context.ref}' found`)
+  throw new Error(`failed to parse releaseTagName from ref '${input}'`)
 }
 
-function getVersion(tagName: string): string {
+// getVersion is suppose to return the version
+// that will be populated in "version" field in
+// the plugin manifest.
+export function getVersion(tagName: string): string {
   if (tagName === 'canary') {
     if (fs.existsSync('Cargo.toml')) {
       const cargoToml = toml.parse(fs.readFileSync('Cargo.toml', 'utf-8'))
@@ -207,7 +209,12 @@ function getVersion(tagName: string): string {
     return `canary.${getEpochTime()}`
   }
 
-  return tagName.replace(/^v/, '')
+  const semversion = extractSemver(tagName)
+  if (!semversion) {
+    throw new Error(`unable to extract semver from tag '${tagName}'`)
+  }
+
+  return semversion
 }
 
 function getEpochTime(): number {
@@ -225,6 +232,11 @@ function getFilename(url: string): string {
 
 async function addDelay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function extractSemver(input: string): string | null {
+  const version = semver.coerce(input)
+  return version ? version.version : null
 }
 
 run()
