@@ -103,7 +103,7 @@ export async function run(): Promise<void> {
 
     const templ = fs.readFileSync(templateFile, 'utf8')
     const rendered = mustache.render(templ, view, undefined, {
-      escape: safeEscape
+      escape: encodeURIComponent
     })
     const renderedBase64 = encode(rendered)
 
@@ -240,13 +240,3 @@ function extractSemver(input: string): string | null {
   const version = semver.coerce(input)
   return version ? version.version : null
 }
-
-// mustache escape function rewrites plugin/v0.0.4 as plugin&#x2F;v0.0.4
-// The following functions tells mustache to leave `/` alone.
-const safeEscape = (text: string) =>
-  String(text)
-    .replace(/&/g, '&amp;') // must come first
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
