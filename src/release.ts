@@ -41,7 +41,7 @@ const octokit = (() => {
 const encode = (str: string): string =>
   Buffer.from(str, 'binary').toString('base64')
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   try {
     const releaseTagName = getReleaseTagName(github.context.ref)
     const version = getVersion(releaseTagName)
@@ -238,5 +238,3 @@ function extractSemver(input: string): string | null {
   const version = semver.coerce(input)
   return version ? version.version : null
 }
-
-run()

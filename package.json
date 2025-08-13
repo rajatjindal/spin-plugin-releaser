@@ -9,7 +9,7 @@
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
     "lint-fix": "eslint . --ext .ts --fix",
-    "package": "ncc build -o dist/ src/release.ts",
+    "package": "ncc build -o dist/ src/index.ts",
     "test": "vitest",
     "all": "npm run build && npm run format && npm run package"
   },

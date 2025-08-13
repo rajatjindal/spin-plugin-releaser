@@ -43210,7 +43210,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getVersion = exports.getReleaseTagName = void 0;
+exports.getVersion = exports.getReleaseTagName = exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const crypto = __importStar(__nccwpck_require__(6113));
 const fs = __importStar(__nccwpck_require__(5630));
@@ -43328,6 +43328,7 @@ function run() {
         }
     });
 }
+exports.run = run;
 function renderTemplate(sha256sumMap, indent) {
     return function () {
         return function (text, render) {
@@ -43386,7 +43387,6 @@ function extractSemver(input) {
     const version = semver_1.default.coerce(input);
     return version ? version.version : null;
 }
-run();
 
 
 /***/ }),
@@ -49262,9 +49262,16 @@ const dist_src_Octokit = Octokit.plugin(requestLog, legacyRestEndpointMethods, p
 /******/ if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = new URL('.', import.meta.url).pathname.slice(import.meta.url.match(/^file:\/\/\/\w:/) ? 1 : 0, -1) + "/";
 /******/ 
 /************************************************************************/
-/******/ 
-/******/ // startup
-/******/ // Load entry module and return exports
-/******/ // This entry module is referenced by other modules so it can't be inlined
-/******/ var __webpack_exports__ = __nccwpck_require__(7776);
-/******/ 
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+(() => {
+var exports = __webpack_exports__;
+
+Object.defineProperty(exports, "X", ({ value: true }));
+const release_1 = __nccwpck_require__(7776);
+(0, release_1.run)();
+
+})();
+
+var __webpack_exports___esModule = __webpack_exports__.X;
+export { __webpack_exports___esModule as __esModule };
