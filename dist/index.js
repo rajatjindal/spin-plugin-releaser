@@ -43170,7 +43170,7 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 7776:
+/***/ 3015:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 
@@ -43210,138 +43210,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getVersion = exports.getReleaseTagName = exports.renderTemplate = exports.run = void 0;
-const core = __importStar(__nccwpck_require__(2186));
+exports.calculateSHA = exports.safeEscape = exports.getFilename = exports.getVersion = exports.getReleaseTagName = void 0;
 const crypto = __importStar(__nccwpck_require__(6113));
+const mockables_1 = __nccwpck_require__(6894);
 const fs = __importStar(__nccwpck_require__(5630));
-const github = __importStar(__nccwpck_require__(5438));
-const httpm = __importStar(__nccwpck_require__(6255));
-const mustache = __importStar(__nccwpck_require__(8272));
 const tc = __importStar(__nccwpck_require__(7784));
-const buffer_1 = __nccwpck_require__(4300);
-const rest_1 = __nccwpck_require__(7620);
 const toml_1 = __importDefault(__nccwpck_require__(4920));
 const semver_1 = __importDefault(__nccwpck_require__(1383));
-const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app';
-const DEFAULT_INDENT = '6';
-const token = core.getInput('github_token');
-const octokit = (() => {
-    return token ? new rest_1.Octokit({ auth: token }) : new rest_1.Octokit();
-})();
-const encode = (str) => buffer_1.Buffer.from(str, 'binary').toString('base64');
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const releaseTagName = getReleaseTagName(github.context.ref);
-            const version = getVersion(releaseTagName);
-            const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT);
-            const release_webhook_url = core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL;
-            core.info(`webhook url is ${release_webhook_url}`);
-            //sometimes github assets are not available right away
-            //TODO: retry instead of sleep
-            yield addDelay(10 * 1000);
-            //TODO(rajatjindal): support navigation
-            const allReleases = yield octokit.rest.repos.listReleases({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo
-            });
-            const release = allReleases.data.find(item => item.tag_name === releaseTagName);
-            if (!release) {
-                throw new Error(`no release found with tag ${releaseTagName}`);
-            }
-            // use the tag from the release
-            const tagName = release.tag_name;
-            const releaseMap = {};
-            for (const asset of (release === null || release === void 0 ? void 0 : release.assets) || []) {
-                core.info(`calculating sha of ${asset.browser_download_url}`);
-                const downloadPath = yield tc.downloadTool(asset.url, undefined, token ? `token ${token}` : undefined, {
-                    accept: 'application/octet-stream'
-                });
-                const buffer = fs.readFileSync(downloadPath);
-                releaseMap[asset.browser_download_url.toLowerCase()] = crypto
-                    .createHash('sha256')
-                    .update(buffer)
-                    .digest('hex');
-            }
-            core.info(`release map is ${JSON.stringify(releaseMap)}`);
-            const view = {
-                TagName: () => tagName,
-                Version: () => version,
-                addURLAndSha: renderTemplate(releaseMap, indent)
-            };
-            const templateFile = core.getInput('template_file', { trimWhitespace: true }) ||
-                '.spin-plugin.json.tmpl';
-            const templ = fs.readFileSync(templateFile, 'utf8');
-            const rendered = mustache.render(templ, view, undefined, {
-                escape: safeEscape
-            });
-            const renderedBase64 = encode(rendered);
-            const manifest = JSON.parse(rendered);
-            const releaseReq = {
-                tagName,
-                pluginName: manifest.name,
-                pluginRepo: github.context.repo.repo,
-                pluginOwner: github.context.repo.owner,
-                pluginReleaseActor: github.context.actor,
-                processedTemplate: renderedBase64
-            };
-            const httpclient = new httpm.HttpClient('spin-plugins-releaser');
-            core.info(JSON.stringify(releaseReq, null, '\t'));
-            // create checksums-<tagname>.txt
-            const uploadChecksums = core
-                .getInput('upload_checksums', { trimWhitespace: true })
-                .toLowerCase() === 'true' || false;
-            if (uploadChecksums) {
-                const checksums = [];
-                for (const [key, value] of Object.entries(releaseMap)) {
-                    if (!key.endsWith('.tar.gz')) {
-                        continue;
-                    }
-                    checksums.push(`${value}  ${getFilename(key)}`);
-                }
-                core.info(`checksums file is ${checksums}`);
-                yield octokit.rest.repos.uploadReleaseAsset({
-                    owner: github.context.repo.owner,
-                    repo: github.context.repo.repo,
-                    release_id: release.id,
-                    name: `checksums-${tagName}.txt`,
-                    data: checksums.join('\n')
-                });
-            }
-            core.info('uploading plugin json file as an asset to release');
-            yield octokit.rest.repos.uploadReleaseAsset({
-                owner: github.context.repo.owner,
-                repo: github.context.repo.repo,
-                release_id: release.id,
-                name: `${manifest.name}.json`,
-                data: rendered
-            });
-            core.info(`added ${manifest.name}.json file to release ${tagName}`);
-            if (tagName === 'canary') {
-                return;
-            }
-            const rawBody = JSON.stringify(releaseReq);
-            core.info(`making webhook request to create PR ${rawBody}`);
-            yield httpclient.post(release_webhook_url, rawBody, { connection: 'close' });
-        }
-        catch (error) {
-            if (error instanceof Error)
-                core.setFailed(error.message);
-        }
-    });
-}
-exports.run = run;
-function renderTemplate(sha256sumMap, indent) {
-    return function () {
-        return function (text, render) {
-            const url = render(text);
-            return (`"url": "${url}",` +
-                '\n' +
-                `${' '.repeat(indent)}"sha256": "${sha256sumMap[url.toLowerCase()]}"`);
-        };
-    };
-}
-exports.renderTemplate = renderTemplate;
 // getReleaseTagName returns the tagName from the github ref
 function getReleaseTagName(input) {
     if (input.startsWith('refs/tags/')) {
@@ -43359,7 +43234,7 @@ exports.getReleaseTagName = getReleaseTagName;
 function getVersion(tagName) {
     if (tagName === 'canary') {
         if (fs.existsSync('Cargo.toml')) {
-            const cargoToml = toml_1.default.parse(fs.readFileSync('Cargo.toml', 'utf-8'));
+            const cargoToml = toml_1.default.parse((0, mockables_1.readFileSync)('Cargo.toml', 'utf-8'));
             return `${cargoToml.package.version}post.${getEpochTime()}`;
         }
         return `canary.${getEpochTime()}`;
@@ -43381,23 +43256,325 @@ function getFilename(url) {
     }
     throw new Error('failed to find filename from asset url');
 }
-function addDelay(ms) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    });
-}
+exports.getFilename = getFilename;
 function extractSemver(input) {
     const version = semver_1.default.coerce(input);
     return version ? version.version : null;
 }
 // mustache escape function rewrites plugin/v0.0.4 as plugin&#x2F;v0.0.4
 // The following functions tells mustache to leave `/` alone.
-const safeEscape = (text) => String(text)
-    .replace(/&/g, '&amp;') // must come first
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+function safeEscape(text) {
+    return String(text)
+        .replace(/&/g, '&amp;') // must come first
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+exports.safeEscape = safeEscape;
+function calculateSHA(url, token) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const downloadPath = yield tc.downloadTool(url, undefined, token ? `token ${token}` : undefined, {
+            accept: 'application/octet-stream'
+        });
+        const buffer = (0, mockables_1.readFileSync)(downloadPath);
+        return crypto.createHash('sha256').update(buffer).digest('hex');
+    });
+}
+exports.calculateSHA = calculateSHA;
+
+
+/***/ }),
+
+/***/ 6894:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.addDelay = exports.readFileSync = void 0;
+const fs = __importStar(__nccwpck_require__(5630));
+// these functions are mocked during unit tests
+function readFileSync(filePath, encoding) {
+    return fs.readFileSync(filePath, encoding).toString();
+}
+exports.readFileSync = readFileSync;
+function addDelay(ms) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    });
+}
+exports.addDelay = addDelay;
+
+
+/***/ }),
+
+/***/ 7776:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.renderOnlyURL = exports.getReleaseAssetsSha256sumMap = exports.parseTemplateIntoManifest = exports.run = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const mockables_1 = __nccwpck_require__(6894);
+const github = __importStar(__nccwpck_require__(5438));
+const httpm = __importStar(__nccwpck_require__(6255));
+const mustache_1 = __importDefault(__nccwpck_require__(8272));
+const buffer_1 = __nccwpck_require__(4300);
+const rest_1 = __nccwpck_require__(7620);
+const helpers_1 = __nccwpck_require__(3015);
+const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app';
+const DEFAULT_INDENT = '6';
+const token = core.getInput('github_token');
+const octokit = (() => {
+    return token ? new rest_1.Octokit({ auth: token }) : new rest_1.Octokit();
+})();
+const encode = (str) => buffer_1.Buffer.from(str, 'binary').toString('base64');
+function parseActionsInput() {
+    return {
+        repo: github.context.repo.repo,
+        owner: github.context.repo.owner,
+        actor: github.context.actor,
+        releaseTagName: (0, helpers_1.getReleaseTagName)(github.context.ref),
+        version: (0, helpers_1.getVersion)((0, helpers_1.getReleaseTagName)(github.context.ref)),
+        releaseWebhookURL: core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL,
+        indent: parseInt(core.getInput('indent') || DEFAULT_INDENT),
+        templateFile: core.getInput('template_file', { trimWhitespace: true }) ||
+            '.spin-plugin.json.tmpl',
+        uploadChecksums: core
+            .getInput('upload_checksums', { trimWhitespace: true })
+            .toLowerCase() === 'true' || false
+    };
+}
+function run() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const context = parseActionsInput();
+        const releaseMap = yield getReleaseAssetsSha256sumMap(context);
+        const releaseId = yield getReleaseId(context);
+        // upload checksums file if enabled
+        if (context.uploadChecksums) {
+            const checksums = [];
+            for (const [key, value] of Object.entries(releaseMap)) {
+                if (!key.endsWith('.tar.gz')) {
+                    continue;
+                }
+                checksums.push(`${value}  ${(0, helpers_1.getFilename)(key)}`);
+            }
+            core.info(`checksums file is ${checksums}`);
+            yield octokit.rest.repos.uploadReleaseAsset({
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+                release_id: releaseId,
+                name: `checksums-${context.releaseTagName}.txt`,
+                data: checksums.join('\n')
+            });
+        }
+        const rawManifest = parseTemplateIntoManifest(context, releaseMap);
+        const manifest = JSON.parse(rawManifest);
+        core.info('uploading plugin json file as an asset to release');
+        yield octokit.rest.repos.uploadReleaseAsset({
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            release_id: releaseId,
+            name: `${manifest.name}.json`,
+            data: rawManifest
+        });
+        core.info(`added ${manifest.name}.json file to release ${context.releaseTagName}`);
+        if (context.releaseTagName === 'canary') {
+            return;
+        }
+        const releaseReq = {
+            tagName: context.releaseTagName,
+            pluginName: manifest.name,
+            pluginRepo: context.repo,
+            pluginOwner: context.owner,
+            pluginReleaseActor: github.context.actor,
+            processedTemplate: encode(rawManifest)
+        };
+        const rawBody = JSON.stringify(releaseReq);
+        core.info(`making webhook request to create PR ${rawBody}`);
+        yield new httpm.HttpClient('spin-plugins-releaser').post(context.releaseWebhookURL, rawBody, { connection: 'close' });
+    });
+}
+exports.run = run;
+function getReleaseId(context) {
+    var _a, e_1, _b, _c;
+    return __awaiter(this, void 0, void 0, function* () {
+        const params = {
+            owner: context.owner,
+            repo: context.repo
+        };
+        const iter = octokit.paginate.iterator(octokit.rest.repos.listReleases, params);
+        try {
+            for (var _d = true, iter_1 = __asyncValues(iter), iter_1_1; iter_1_1 = yield iter_1.next(), _a = iter_1_1.done, !_a;) {
+                _c = iter_1_1.value;
+                _d = false;
+                try {
+                    const releases = _c;
+                    const release = releases.data.find(item => item.tag_name === context.releaseTagName);
+                    if (release)
+                        return release.id;
+                }
+                finally {
+                    _d = true;
+                }
+            }
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (!_d && !_a && (_b = iter_1.return)) yield _b.call(iter_1);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+        throw new Error(`no release found with tag name ${context.releaseTagName}`);
+    });
+}
+function parseTemplateIntoManifest(context, releaseMap) {
+    // do a second pass which also renders the sha256sum
+    const fullview = {
+        TagName: () => context.releaseTagName,
+        Version: () => context.version,
+        addURLAndSha: renderURLWithSha256(releaseMap, context.indent)
+    };
+    return render(context.templateFile, fullview);
+}
+exports.parseTemplateIntoManifest = parseTemplateIntoManifest;
+function getReleaseAssetsSha256sumMap(context) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            core.info(`inputs:\n${JSON.stringify(context, null, 2)}`);
+            // sometimes release assets are not available right away
+            // TODO: retry instead of sleep
+            yield (0, mockables_1.addDelay)(10 * 1000);
+            // In the first pass, only populate the URL. This is done this way
+            // so that we can read the rendered manifest and then iterate through
+            // the asset urls to download and calculate the sha256sum of those assets.
+            // we could do this in one go within the render function, but that would be slow
+            // as it would download and calculate the sha256sum sequentially.
+            const view = {
+                TagName: () => context.releaseTagName,
+                Version: () => context.version,
+                addURLAndSha: renderOnlyURL()
+            };
+            const rendered = render(context.templateFile, view);
+            const releaseMap = new Map();
+            const manifest = JSON.parse(rendered);
+            yield Promise.all(manifest.packages.map((pkg) => __awaiter(this, void 0, void 0, function* () {
+                const sha = yield (0, helpers_1.calculateSHA)(pkg.url, token);
+                releaseMap.set(pkg.url, sha);
+            })));
+            return releaseMap;
+        }
+        catch (error) {
+            if (error instanceof Error)
+                core.setFailed(error.message);
+        }
+        throw new Error(`failed to create asseturl -> sha256sum map`);
+    });
+}
+exports.getReleaseAssetsSha256sumMap = getReleaseAssetsSha256sumMap;
+// This function only renders the URL.
+function renderOnlyURL() {
+    return function () {
+        return function (text, render) {
+            const url = render(text);
+            return `"url": "${url}"`;
+        };
+    };
+}
+exports.renderOnlyURL = renderOnlyURL;
+// This function renders the url, and finds the sha256sum from the provided releaseMap.
+// It then populates both the url and sha256sum in the template file
+function renderURLWithSha256(sha256sumMap, indent) {
+    return function () {
+        return function (text, render) {
+            const url = render(text);
+            return (`"url": "${url}",` +
+                '\n' +
+                `${' '.repeat(indent)}"sha256": "${sha256sumMap.get(url.toLowerCase())}"`);
+        };
+    };
+}
+function render(templateFile, view) {
+    const templ = (0, mockables_1.readFileSync)(templateFile, 'utf8');
+    return mustache_1.default.render(templ, view, undefined, {
+        escape: helpers_1.safeEscape
+    });
+}
 
 
 /***/ }),

@@ -1,5 +1,55 @@
 import {describe, it, expect, vi} from 'vitest'
-import {getVersion, getReleaseTagName} from './release'
+import {
+  parseTemplateIntoManifest,
+  getReleaseAssetsSha256sumMap
+} from './release'
+import {getVersion, getReleaseTagName} from './helpers'
+import type {ResolvedInputs} from './types'
+
+import {readFileSync} from './mockables'
+import {fileURLToPath} from 'node:url'
+import {join} from 'node:path'
+import * as fs from 'fs-extra'
+
+// returns a fake filepath
+vi.mock('@actions/tool-cache', () => ({
+  downloadTool: vi.fn(async url => `/fake/path/${url.split('/').pop()}`)
+}))
+
+// This function returns the filepath as content if filepath starts with /fake
+// otherwise it just returns the actual content of the file
+vi.mock('./mockables', async importOriginal => {
+  const actual = await importOriginal<typeof import('./mockables')>()
+  console.log(actual)
+  return {
+    ...actual,
+    readFileSync: vi.fn((filePath: string, encoding?: BufferEncoding) => {
+      if (filePath.startsWith('/fake')) {
+        return filePath
+      }
+
+      return actual.readFileSync(filePath, encoding)
+    }),
+    addDelay: vi.fn((ms: number) => {})
+  }
+})
+
+describe('verify mocks works as expected', () => {
+  it('readFileSync is mocked but others remain real', () => {
+    const content = readFileSync('/fake/path.txt', 'utf-8')
+    expect(content).toBe('/fake/path.txt')
+
+    // This still works — original existsSync is intact
+    expect(typeof fs.existsSync).toBe('function')
+
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = join(__filename, '..')
+    const templateFile = join(__dirname, 'testdata/not-a-fake-file.txt')
+
+    const otherContent = readFileSync(templateFile, 'utf-8')
+    expect(otherContent).toBe('told you. it is not a fake file.')
+  })
+})
 
 describe('getVersion', () => {
   it('should return timestamp appended for canary releases', () => {
@@ -38,4 +88,35 @@ describe('getReleaseTagName', () => {
     const result = getReleaseTagName('refs/tags/plugin/v2.4.6')
     expect(result).toBe('plugin/v2.4.6')
   })
+})
+
+describe('parseTemplateIntoManifest test', () => {
+  it(
+    'should parse and generate manifest correctly',
+    {timeout: 30 * 1000},
+    async () => {
+      const __filename = fileURLToPath(import.meta.url)
+      const __dirname = join(__filename, '..')
+      const templateFile = join(__dirname, 'testdata/spin-plugin.json.tmpl')
+      const expectedFile = join(__dirname, 'testdata/expected_output.json')
+
+      const context: ResolvedInputs = {
+        repo: 'spin-plugin-releasetest',
+        owner: 'rajatjindal',
+        actor: 'rajatjindal',
+        releaseTagName: 'plugin/v0.0.8',
+        version: '0.0.8',
+        releaseWebhookURL: 'https://spin-plugin-releaser-staging.fermyon.app',
+        uploadChecksums: false,
+        indent: 6,
+        templateFile: templateFile
+      }
+
+      const releaseMap = await getReleaseAssetsSha256sumMap(context)
+      const rendered = parseTemplateIntoManifest(context, releaseMap)
+      const expectedManifest = readFileSync(expectedFile)
+
+      expect(rendered).toBe(expectedManifest)
+    }
+  )
 })
