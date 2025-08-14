@@ -43427,7 +43427,7 @@ function run() {
         // upload checksums file if enabled
         if (context.uploadChecksums) {
             const checksums = [];
-            for (const [key, value] of Object.entries(releaseMap)) {
+            for (const [key, value] of releaseMap) {
                 if (!key.endsWith('.tar.gz')) {
                     continue;
                 }
