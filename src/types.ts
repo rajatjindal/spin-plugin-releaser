@@ -31,6 +31,7 @@ export interface ResolvedInputs {
   indent: number
   templateFile: string
   uploadChecksums: boolean
+  uploadPluginManifest: boolean
 }
 
 export interface ReleaseRequest {

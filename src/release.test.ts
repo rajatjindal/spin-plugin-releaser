@@ -112,7 +112,8 @@ describe('parseTemplateIntoManifest test', () => {
       releaseWebhookURL: 'https://spin-plugin-releaser-staging.fermyon.app',
       uploadChecksums: false,
       indent: 6,
-      templateFile: templateFile
+      templateFile: templateFile,
+      uploadPluginManifest: true
     }
 
     // process.env.RUNNER_TEMP="/Users/rajatjindal/go/src/github.com/rajatjindal/spin-plugin-releaser/tmp"

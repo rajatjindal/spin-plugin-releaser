@@ -43410,14 +43410,26 @@ function parseActionsInput() {
         actor: github.context.actor,
         releaseTagName: (0, helpers_1.getReleaseTagName)(github.context.ref),
         version: (0, helpers_1.getVersion)((0, helpers_1.getReleaseTagName)(github.context.ref)),
-        releaseWebhookURL: core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL,
-        indent: parseInt(core.getInput('indent') || DEFAULT_INDENT),
-        templateFile: core.getInput('template_file', { trimWhitespace: true }) ||
-            '.spin-plugin.json.tmpl',
-        uploadChecksums: core
-            .getInput('upload_checksums', { trimWhitespace: true })
-            .toLowerCase() === 'true' || false
+        releaseWebhookURL: getOrDefaultString('release_webhook_url', RELEASE_BOT_WEBHOOK_URL),
+        indent: parseInt(getOrDefaultString('indent', DEFAULT_INDENT)),
+        templateFile: getOrDefaultString('template_file', '.spin-plugin.json.tmpl'),
+        uploadChecksums: getOrDefaultBool('upload_checksums', false),
+        uploadPluginManifest: getOrDefaultBool('upload_plugin_manifest', true)
     };
+}
+function getOrDefaultString(key, defaultValue) {
+    const input = core.getInput(key, { trimWhitespace: true });
+    if (input) {
+        return input;
+    }
+    return defaultValue;
+}
+function getOrDefaultBool(key, defaultValue) {
+    const input = core.getInput(key, { trimWhitespace: true }).toLowerCase();
+    if (input) {
+        return input === 'true';
+    }
+    return defaultValue;
 }
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -43444,15 +43456,17 @@ function run() {
         }
         const rawManifest = parseTemplateIntoManifest(context, releaseMap);
         const manifest = JSON.parse(rawManifest);
-        core.info('uploading plugin json file as an asset to release');
-        yield octokit.rest.repos.uploadReleaseAsset({
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
-            release_id: releaseId,
-            name: `${manifest.name}.json`,
-            data: rawManifest
-        });
-        core.info(`added ${manifest.name}.json file to release ${context.releaseTagName}`);
+        if (context.uploadPluginManifest) {
+            core.info('uploading plugin json file as an asset to release');
+            yield octokit.rest.repos.uploadReleaseAsset({
+                owner: github.context.repo.owner,
+                repo: github.context.repo.repo,
+                release_id: releaseId,
+                name: `${manifest.name}.json`,
+                data: rawManifest
+            });
+            core.info(`added ${manifest.name}.json file to release ${context.releaseTagName}`);
+        }
         if (context.releaseTagName === 'canary') {
             return;
         }
