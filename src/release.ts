@@ -217,7 +217,7 @@ function renderURLWithSha256(
 
 function render(templateFile: string, view: MustacheView): string {
   const templ = readFileSync(templateFile, 'utf8')
-  return mustache.render(templ, view, undefined, {
+  return mustache.render(templ.toString(), view, undefined, {
     escape: safeEscape
   })
 }

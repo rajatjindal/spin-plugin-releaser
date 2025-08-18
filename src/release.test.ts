@@ -13,7 +13,9 @@ import * as fs from 'fs-extra'
 
 // returns a fake filepath
 vi.mock('@actions/tool-cache', () => ({
-  downloadTool: vi.fn(async url => `/fake/path/${url.split('/').pop()}`)
+  downloadTool: vi.fn(async (url: string) => {
+    return `/fake/path/${url.split('/').pop()}`
+  })
 }))
 
 // This function returns the filepath as content if filepath starts with /fake
@@ -24,8 +26,12 @@ vi.mock('./mockables', async importOriginal => {
   return {
     ...actual,
     readFileSync: vi.fn((filePath: string, encoding?: BufferEncoding) => {
-      if (filePath.startsWith('/fake')) {
+      if (filePath.startsWith('/fake/path/')) {
         return filePath
+      }
+
+      if (filePath.startsWith('/invalid-path')) {
+        throw new Error(`invalid path ${filePath}`)
       }
 
       return actual.readFileSync(filePath, encoding)
@@ -36,8 +42,8 @@ vi.mock('./mockables', async importOriginal => {
 
 describe('verify mocks works as expected', () => {
   it('readFileSync is mocked but others remain real', () => {
-    const content = readFileSync('/fake/path.txt', 'utf-8')
-    expect(content).toBe('/fake/path.txt')
+    const content = readFileSync('/fake/path/foo.txt', 'utf-8')
+    expect(content).toBe('/fake/path/foo.txt')
 
     // This still works — original existsSync is intact
     expect(typeof fs.existsSync).toBe('function')
@@ -109,10 +115,11 @@ describe('parseTemplateIntoManifest test', () => {
       templateFile: templateFile
     }
 
+    // process.env.RUNNER_TEMP="/Users/rajatjindal/go/src/github.com/rajatjindal/spin-plugin-releaser/tmp"
     const releaseMap = await getReleaseAssetsSha256sumMap(context)
     const rendered = parseTemplateIntoManifest(context, releaseMap)
     const expectedManifest = readFileSync(expectedFile)
 
-    expect(rendered).toBe(expectedManifest)
+    expect(rendered).toBe(expectedManifest.toString())
   })
 })

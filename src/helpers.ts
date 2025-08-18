@@ -24,7 +24,9 @@ export function getReleaseTagName(input: string): string {
 export function getVersion(tagName: string): string {
   if (tagName === 'canary') {
     if (fs.existsSync('Cargo.toml')) {
-      const cargoToml = toml.parse(readFileSync('Cargo.toml', 'utf-8'))
+      const cargoToml = toml.parse(
+        readFileSync('Cargo.toml', 'utf-8').toString()
+      )
       return `${cargoToml.package.version}post.${getEpochTime()}`
     }
 

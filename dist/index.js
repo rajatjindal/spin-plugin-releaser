@@ -43234,7 +43234,7 @@ exports.getReleaseTagName = getReleaseTagName;
 function getVersion(tagName) {
     if (tagName === 'canary') {
         if (fs.existsSync('Cargo.toml')) {
-            const cargoToml = toml_1.default.parse((0, mockables_1.readFileSync)('Cargo.toml', 'utf-8'));
+            const cargoToml = toml_1.default.parse((0, mockables_1.readFileSync)('Cargo.toml', 'utf-8').toString());
             return `${cargoToml.package.version}post.${getEpochTime()}`;
         }
         return `canary.${getEpochTime()}`;
@@ -43327,7 +43327,7 @@ exports.addDelay = exports.readFileSync = void 0;
 const fs = __importStar(__nccwpck_require__(5630));
 // these functions are mocked during unit tests
 function readFileSync(filePath, encoding) {
-    return fs.readFileSync(filePath, encoding).toString();
+    return fs.readFileSync(filePath, encoding);
 }
 exports.readFileSync = readFileSync;
 function addDelay(ms) {
@@ -43571,7 +43571,7 @@ function renderURLWithSha256(sha256sumMap, indent) {
 }
 function render(templateFile, view) {
     const templ = (0, mockables_1.readFileSync)(templateFile, 'utf8');
-    return mustache_1.default.render(templ, view, undefined, {
+    return mustache_1.default.render(templ.toString(), view, undefined, {
         escape: helpers_1.safeEscape
     });
 }
