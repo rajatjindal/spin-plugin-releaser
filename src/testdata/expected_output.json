@@ -1,0 +1,46 @@
+{
+  "name": "releasetest",
+  "description": "A plugin to test manifest rendering",
+  "homepage": "https://github.com/rajatjindal/spin-plugin-releasetest",
+  "version": "0.0.8",
+  "spinCompatibility": ">=2.3.1",
+  "license": "Apache-2.0",
+  "packages": [
+    {
+      "os": "linux",
+      "arch": "amd64",
+      "url": "https://github.com/rajatjindal/spin-plugin-releasetest/releases/download/plugin/v0.0.8/releasetest-linux-amd64.tar.gz",
+      "sha256": "918956d21cad346ae7a724aaf1680267e667ac7b3e144d07683b7d1e343c5564"
+    },
+    {
+      "os": "linux",
+      "arch": "aarch64",
+      "url": "https://github.com/rajatjindal/spin-plugin-releasetest/releases/download/plugin/v0.0.8/releasetest-linux-arm64.tar.gz",
+      "sha256": "2663e2ab45698aa3469dfa721e4058f617cf3ab0c654273618dc9f4a4fa8546c"
+    },
+    {
+      "os": "macos",
+      "arch": "aarch64",
+      "url": "https://github.com/rajatjindal/spin-plugin-releasetest/releases/download/plugin/v0.0.8/releasetest-darwin-arm64.tar.gz",
+      "sha256": "9ee93f59bf67e3419867e92e1cc97f4194ae56968a83521691ca7ed00f18ed95"
+    },
+    {
+      "os": "macos",
+      "arch": "amd64",
+      "url": "https://github.com/rajatjindal/spin-plugin-releasetest/releases/download/plugin/v0.0.8/releasetest-darwin-amd64.tar.gz",
+      "sha256": "5e63c3f9141e2325aa9dbf47a90058bd55398da7e52bf4e53f3696871776c695"
+    },
+    {
+      "os": "windows",
+      "arch": "amd64",
+      "url": "https://github.com/rajatjindal/spin-plugin-releasetest/releases/download/plugin/v0.0.8/releasetest-windows-amd64.tar.gz",
+      "sha256": "95351f15861946156a3026b3f629651d208c24044d6f3924049756efc543bf83"
+    },
+    {
+      "os": "windows",
+      "arch": "aarch64",
+      "url": "https://github.com/rajatjindal/spin-plugin-releasetest/releases/download/plugin/v0.0.8/releasetest-windows-arm64.tar.gz",
+      "sha256": "779666246d906058472ed53f907b794eed8a337d77a0658eeaab6e7cf6ceec7b"
+    }
+  ]
+}

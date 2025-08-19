@@ -1,4 +1,4 @@
-name: Ensure dist package is up to date
+name: PR Validations
 on:
   pull_request:
     branches: [main]
@@ -10,17 +10,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.1.0
-      
-      - name: npm install
-        run: npm install
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22.1.0
 
-      - name: npm run build
-        run: npm run package
+    - name: install dependencies
+      run: npm install
 
-      - name: ensure dist is up to date
-        run: git diff --exit-code
+    - name: check formatting
+      run: npm run format-check
+
+    - name: run unit tests
+      run: npm run test
+
+    - name: ensure dist is up to date
+      run: |
+        npm run package
+        git diff --exit-code

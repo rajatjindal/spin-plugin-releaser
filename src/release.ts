@@ -1,37 +1,27 @@
 import * as core from '@actions/core'
-import * as crypto from 'crypto'
-import * as fs from 'fs-extra'
+import {readFileSync, addDelay} from './mockables'
 import * as github from '@actions/github'
 import * as httpm from '@actions/http-client'
-import * as mustache from 'mustache'
-import * as tc from '@actions/tool-cache'
+import mustache from 'mustache'
 import {Buffer} from 'buffer'
 import {Octokit} from '@octokit/rest'
-import toml from 'toml'
+import {
+  getReleaseTagName,
+  getVersion,
+  getFilename,
+  calculateSHA,
+  safeEscape
+} from './helpers'
+import type {
+  MustacheView,
+  ResolvedInputs,
+  Manifest,
+  ReleaseRequest
+} from './types'
 
 const RELEASE_BOT_WEBHOOK_URL = 'https://spin-plugin-releaser.fermyon.app'
-
-interface MustacheView {
-  TagName: string
-  Version: string
-  addURLAndSha: () => (text: string, render: (text2: string) => string) => void
-}
-
-interface Manifest {
-  name: string
-  version: string
-}
-
-interface ReleaseRequest {
-  tagName: string
-  pluginName: string
-  pluginRepo: string
-  pluginOwner: string
-  pluginReleaseActor: string
-  processedTemplate: string
-}
-
 const DEFAULT_INDENT = '6'
+
 const token = core.getInput('github_token')
 const octokit = (() => {
   return token ? new Octokit({auth: token}) : new Octokit()
@@ -40,137 +30,196 @@ const octokit = (() => {
 const encode = (str: string): string =>
   Buffer.from(str, 'binary').toString('base64')
 
-async function run(): Promise<void> {
-  try {
-    const tempTagName = getReleaseTagName()
-    const version = getVersion(tempTagName)
-    const indent = parseInt(core.getInput('indent') || DEFAULT_INDENT)
-    const release_webhook_url =
-      core.getInput('release_webhook_url') || RELEASE_BOT_WEBHOOK_URL
+function parseActionsInput(): ResolvedInputs {
+  return {
+    repo: github.context.repo.repo,
+    owner: github.context.repo.owner,
+    actor: github.context.actor,
+    releaseTagName: getReleaseTagName(github.context.ref),
+    version: getVersion(getReleaseTagName(github.context.ref)),
+    releaseWebhookURL: getOrDefaultString(
+      'release_webhook_url',
+      RELEASE_BOT_WEBHOOK_URL
+    ),
+    indent: parseInt(getOrDefaultString('indent', DEFAULT_INDENT)),
+    templateFile: getOrDefaultString('template_file', '.spin-plugin.json.tmpl'),
+    uploadChecksums: getOrDefaultBool('upload_checksums', false),
+    uploadPluginManifest: getOrDefaultBool('upload_plugin_manifest', true)
+  }
+}
 
-    core.info(`webhook url is ${release_webhook_url}`)
+function getOrDefaultString(key: string, defaultValue: string): string {
+  const input = core.getInput(key, {trimWhitespace: true})
+  if (input) {
+    return input
+  }
 
-    //sometimes github assets are not available right away
-    //TODO: retry instead of sleep
-    await addDelay(10 * 1000)
+  return defaultValue
+}
 
-    //TODO(rajatjindal): support navigation
-    const allReleases = await octokit.rest.repos.listReleases({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo
-    })
+function getOrDefaultBool(key: string, defaultValue: boolean): boolean {
+  const input: string = core.getInput(key, {trimWhitespace: true}).toLowerCase()
+  if (input) {
+    return input === 'true'
+  }
 
-    const release = allReleases.data.find(
-      item =>
-        item.tag_name === tempTagName || item.tag_name === `v${tempTagName}`
-    )
-    if (!release) {
-      throw new Error(
-        `no release found with tag ${tempTagName} or v${tempTagName}`
-      )
-    }
+  return defaultValue
+}
 
-    // use the tag from the release
-    const tagName = release.tag_name
-    const releaseMap: Record<string, string> = {}
-    for (const asset of release?.assets || []) {
-      core.info(`calculating sha of ${asset.browser_download_url}`)
-      const downloadPath = await tc.downloadTool(
-        asset.url,
-        undefined,
-        token ? `token ${token}` : undefined,
-        {
-          accept: 'application/octet-stream'
-        }
-      )
+export async function run(): Promise<void> {
+  const context = parseActionsInput()
+  const releaseMap = await getReleaseAssetsSha256sumMap(context)
+  const releaseId = await getReleaseId(context)
 
-      const buffer = fs.readFileSync(downloadPath)
-      releaseMap[asset.browser_download_url.toLowerCase()] = crypto
-        .createHash('sha256')
-        .update(buffer)
-        .digest('hex')
-    }
-
-    core.info(`release map is ${JSON.stringify(releaseMap)}`)
-
-    const view: MustacheView = {
-      TagName: tagName,
-      Version: version,
-      addURLAndSha: renderTemplate(releaseMap, indent)
-    }
-
-    const templateFile =
-      core.getInput('template_file', {trimWhitespace: true}) ||
-      '.spin-plugin.json.tmpl'
-
-    const templ = fs.readFileSync(templateFile, 'utf8')
-    const rendered = mustache.render(templ, view)
-    const renderedBase64 = encode(rendered)
-
-    const manifest: Manifest = JSON.parse(rendered)
-    const releaseReq: ReleaseRequest = {
-      tagName,
-      pluginName: manifest.name,
-      pluginRepo: github.context.repo.repo,
-      pluginOwner: github.context.repo.owner,
-      pluginReleaseActor: github.context.actor,
-      processedTemplate: renderedBase64
-    }
-
-    const httpclient = new httpm.HttpClient('spin-plugins-releaser')
-
-    core.info(JSON.stringify(releaseReq, null, '\t'))
-
-    // create checksums-<tagname>.txt
-    const uploadChecksums =
-      core
-        .getInput('upload_checksums', {trimWhitespace: true})
-        .toLowerCase() === 'true' || false
-
-    if (uploadChecksums) {
-      const checksums: string[] = []
-      for (const [key, value] of Object.entries(releaseMap)) {
-        if (!key.endsWith('.tar.gz')) {
-          continue
-        }
-
-        checksums.push(`${value}  ${getFilename(key)}`)
+  // upload checksums file if enabled
+  if (context.uploadChecksums) {
+    const checksums: string[] = []
+    for (const [key, value] of releaseMap) {
+      if (!key.endsWith('.tar.gz')) {
+        continue
       }
 
-      core.info(`checksums file is ${checksums}`)
-      await octokit.rest.repos.uploadReleaseAsset({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
-        release_id: release.id,
-        name: `checksums-${tagName}.txt`,
-        data: checksums.join('\n')
-      })
+      checksums.push(`${value}  ${getFilename(key)}`)
     }
 
+    core.info(`checksums file is ${checksums}`)
+    await octokit.rest.repos.uploadReleaseAsset({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      release_id: releaseId,
+      name: `checksums-${context.releaseTagName}.txt`,
+      data: checksums.join('\n')
+    })
+  }
+
+  const rawManifest = parseTemplateIntoManifest(context, releaseMap)
+  const manifest: Manifest = JSON.parse(rawManifest)
+
+  if (context.uploadPluginManifest) {
     core.info('uploading plugin json file as an asset to release')
     await octokit.rest.repos.uploadReleaseAsset({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      release_id: release.id,
+      release_id: releaseId,
       name: `${manifest.name}.json`,
-      data: rendered
+      data: rawManifest
     })
 
-    core.info(`added ${manifest.name}.json file to release ${tagName}`)
-    if (tagName === 'canary') {
-      return
-    }
+    core.info(
+      `added ${manifest.name}.json file to release ${context.releaseTagName}`
+    )
+  }
 
-    const rawBody = JSON.stringify(releaseReq)
-    core.info(`making webhook request to create PR ${rawBody}`)
-    await httpclient.post(release_webhook_url, rawBody)
+  if (context.releaseTagName === 'canary') {
+    return
+  }
+
+  const releaseReq: ReleaseRequest = {
+    tagName: context.releaseTagName,
+    pluginName: manifest.name,
+    pluginRepo: context.repo,
+    pluginOwner: context.owner,
+    pluginReleaseActor: github.context.actor,
+    processedTemplate: encode(rawManifest)
+  }
+
+  const rawBody = JSON.stringify(releaseReq)
+  core.info(`making webhook request to create PR ${rawBody}`)
+  await new httpm.HttpClient('spin-plugins-releaser').post(
+    context.releaseWebhookURL,
+    rawBody,
+    {connection: 'close'}
+  )
+}
+
+async function getReleaseId(context: ResolvedInputs): Promise<number> {
+  const params = {
+    owner: context.owner,
+    repo: context.repo
+  }
+  const iter = octokit.paginate.iterator(
+    octokit.rest.repos.listReleases,
+    params
+  )
+  for await (const releases of iter) {
+    const release = releases.data.find(
+      item => item.tag_name === context.releaseTagName
+    )
+    if (release) return release.id
+  }
+
+  throw new Error(`no release found with tag name ${context.releaseTagName}`)
+}
+
+export function parseTemplateIntoManifest(
+  context: ResolvedInputs,
+  releaseMap: Map<string, string>
+): string {
+  // do a second pass which also renders the sha256sum
+  const fullview: MustacheView = {
+    TagName: () => context.releaseTagName,
+    Version: () => context.version,
+    addURLAndSha: renderURLWithSha256(releaseMap, context.indent)
+  }
+
+  return render(context.templateFile, fullview)
+}
+
+export async function getReleaseAssetsSha256sumMap(
+  context: ResolvedInputs
+): Promise<Map<string, string>> {
+  try {
+    core.info(`inputs:\n${JSON.stringify(context, null, 2)}`)
+
+    // sometimes release assets are not available right away
+    // TODO: retry instead of sleep
+    await addDelay(10 * 1000)
+
+    // In the first pass, only populate the URL. This is done this way
+    // so that we can read the rendered manifest and then iterate through
+    // the asset urls to download and calculate the sha256sum of those assets.
+    // we could do this in one go within the render function, but that would be slow
+    // as it would download and calculate the sha256sum sequentially.
+    const view: MustacheView = {
+      TagName: () => context.releaseTagName,
+      Version: () => context.version,
+      addURLAndSha: renderOnlyURL()
+    }
+    const rendered = render(context.templateFile, view)
+    const releaseMap = new Map()
+    const manifest: Manifest = JSON.parse(rendered)
+    await Promise.all(
+      manifest.packages.map(async pkg => {
+        const sha = await calculateSHA(pkg.url, token)
+        releaseMap.set(pkg.url, sha)
+      })
+    )
+
+    return releaseMap
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
+
+  throw new Error(`failed to create asseturl -> sha256sum map`)
 }
 
-function renderTemplate(
-  sha256sumMap: Record<string, string>,
+// This function only renders the URL.
+export function renderOnlyURL(): () => (
+  text: string,
+  render: (arg: string) => string
+) => void {
+  return function (): (text: string, render: (arg: string) => string) => void {
+    return function (text: string, render: (arg: string) => string): string {
+      const url = render(text)
+      return `"url": "${url}"`
+    }
+  }
+}
+
+// This function renders the url, and finds the sha256sum from the provided releaseMap.
+// It then populates both the url and sha256sum in the template file
+function renderURLWithSha256(
+  sha256sumMap: Map<string, string>,
   indent: number
 ): () => (text: string, render: (arg: string) => string) => void {
   return function (): (text: string, render: (arg: string) => string) => void {
@@ -179,52 +228,15 @@ function renderTemplate(
       return (
         `"url": "${url}",` +
         '\n' +
-        `${' '.repeat(indent)}"sha256": "${sha256sumMap[url.toLowerCase()]}"`
+        `${' '.repeat(indent)}"sha256": "${sha256sumMap.get(url.toLowerCase())}"`
       )
     }
   }
 }
 
-function getReleaseTagName(): string {
-  if (github.context.ref.startsWith('refs/tags/v')) {
-    return github.context.ref.replace('refs/tags/v', '')
-  }
-
-  if (github.context.ref === 'refs/heads/main') {
-    return 'canary'
-  }
-
-  throw new Error(`invalid ref '${github.context.ref}' found`)
+function render(templateFile: string, view: MustacheView): string {
+  const templ = readFileSync(templateFile, 'utf8')
+  return mustache.render(templ.toString(), view, undefined, {
+    escape: safeEscape
+  })
 }
-
-function getVersion(tagName: string): string {
-  if (tagName === 'canary') {
-    if (fs.existsSync('Cargo.toml')) {
-      const cargoToml = toml.parse(fs.readFileSync('Cargo.toml', 'utf-8'))
-      return `${cargoToml.package.version}post.${getEpochTime()}`
-    }
-
-    return `canary.${getEpochTime()}`
-  }
-
-  return tagName.replace(/^v/, '')
-}
-
-function getEpochTime(): number {
-  return Math.floor(new Date().getTime() / 1000)
-}
-
-function getFilename(url: string): string {
-  const name = url.split('/').pop()
-  if (name) {
-    return name
-  }
-
-  throw new Error('failed to find filename from asset url')
-}
-
-async function addDelay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-run()

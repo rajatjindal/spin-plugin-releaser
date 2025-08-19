@@ -8,6 +8,10 @@ inputs:
   upload_checksums:
     required: false
     description: 'if enabled, uploads a checksums-<tagname>.txt file to release'
+  upload_plugin_manifest:
+    required: false
+    default: true
+    description: 'if enabled, uploads the rendered plugin manifest file to release'
   github_token:
     required: false
     description: 'github token used for downloading artifacts to render template'
