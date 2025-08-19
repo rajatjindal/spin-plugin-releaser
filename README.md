@@ -20,10 +20,13 @@ To trigger `spin-plugin-releaser` you can use a github-action which sends the ev
 
 # Inputs for the action
 
-| Key                | Default Value          | Description                                                                          |
-| ------------------ | ---------------------- | ------------------------------------------------------------------------------------ |
-| template_file | `.spin-plugin.json.tmpl`           | The path to template file |
-| upload_checksums | false           | uploads the checksums-<tagname>.txt file to the release |
+| Key                      | Default Value           | Description                                                                 |
+| ------------------------ | ----------------------- | --------------------------------------------------------------------------- |
+| `template_file`          | `.spin-plugin.json.tmpl`| The plugin template file                                                    |
+| `upload_checksums`       | false                   | Upload a `checksums-<tagname>.txt` file to the release                      |
+| `upload_plugin_manifest` | true                    | Upload the plugin manifest file to the release                              |
+| `github_token`           | *(none)*                | (Optional) GitHub token used for downloading artifacts to render template   |
+| `release_webhook_url`    | *(none)*                | (Optional) The release webhook URL to use instead of using the default      |
 
 # Limitations of spin-plugin-releaser
 
