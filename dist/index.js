@@ -43274,7 +43274,9 @@ function safeEscape(text) {
 exports.safeEscape = safeEscape;
 function calculateSHA(url, token) {
     return __awaiter(this, void 0, void 0, function* () {
-        const downloadPath = yield tc.downloadTool(url, undefined, token ? `token ${token}` : undefined, {
+        const downloadPath = yield tc.downloadTool(url, undefined, url.startsWith('https://github.com/') && token
+            ? `token ${token}`
+            : undefined, {
             accept: 'application/octet-stream'
         });
         const buffer = (0, mockables_1.readFileSync)(downloadPath);
