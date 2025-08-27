@@ -77,7 +77,9 @@ export async function calculateSHA(
   const downloadPath = await tc.downloadTool(
     url,
     undefined,
-    token ? `token ${token}` : undefined,
+    url.startsWith('https://github.com/') && token
+      ? `token ${token}`
+      : undefined,
     {
       accept: 'application/octet-stream'
     }
