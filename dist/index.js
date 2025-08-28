@@ -43437,9 +43437,9 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const context = parseActionsInput();
         const releaseMap = yield getReleaseAssetsSha256sumMap(context);
-        const releaseId = yield getReleaseId(context);
         // upload checksums file if enabled
         if (context.uploadChecksums) {
+            const releaseId = yield getReleaseId(context);
             const checksums = [];
             for (const [key, value] of releaseMap) {
                 if (!key.endsWith('.tar.gz')) {
@@ -43459,6 +43459,7 @@ function run() {
         const rawManifest = parseTemplateIntoManifest(context, releaseMap);
         const manifest = JSON.parse(rawManifest);
         if (context.uploadPluginManifest) {
+            const releaseId = yield getReleaseId(context);
             core.info('uploading plugin json file as an asset to release');
             yield octokit.rest.repos.uploadReleaseAsset({
                 owner: github.context.repo.owner,
