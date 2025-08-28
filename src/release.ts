@@ -69,10 +69,11 @@ function getOrDefaultBool(key: string, defaultValue: boolean): boolean {
 export async function run(): Promise<void> {
   const context = parseActionsInput()
   const releaseMap = await getReleaseAssetsSha256sumMap(context)
-  const releaseId = await getReleaseId(context)
 
   // upload checksums file if enabled
   if (context.uploadChecksums) {
+    const releaseId = await getReleaseId(context)
+
     const checksums: string[] = []
     for (const [key, value] of releaseMap) {
       if (!key.endsWith('.tar.gz')) {
@@ -96,6 +97,8 @@ export async function run(): Promise<void> {
   const manifest: Manifest = JSON.parse(rawManifest)
 
   if (context.uploadPluginManifest) {
+    const releaseId = await getReleaseId(context)
+
     core.info('uploading plugin json file as an asset to release')
     await octokit.rest.repos.uploadReleaseAsset({
       owner: github.context.repo.owner,
